@@ -1,0 +1,48 @@
+/* App-shell plumbing not covered by the MyBiz Design System component set —
+   everything else in this app is styled via inline style objects using DS tokens. */
+html, body, #root { height: 100%; }
+button { font-family: inherit; }
+* { scrollbar-width: thin; }
+
+/* Neutralize the browser's own autofill background paint (Chrome/Safari) so
+   autofilled fields keep matching the Input component's own styling. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--surface-card) inset !important;
+  -webkit-text-fill-color: var(--text-strong) !important;
+  caret-color: var(--text-strong);
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+@media (max-width: 900px) {
+  .app-sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 40; transform: translateX(-100%);
+    transition: transform var(--dur-normal) var(--ease-standard); box-shadow: var(--shadow-lg); }
+  .app-sidebar.open { transform: translateX(0); }
+  .app-scrim { display: none; position: fixed; inset: 0; background: var(--surface-scrim); z-index: 30; }
+  .app-scrim.open { display: block; }
+  .app-hamburger { display: inline-flex !important; }
+}
+@media (min-width: 901px) {
+  .app-hamburger { display: none !important; }
+}
+
+@media (max-width: 860px) {
+  .auth-visual { display: none !important; }
+  .auth-form { flex: 1 1 auto !important; }
+}
+
+/* Screen archetypes collapse to a single column on narrow viewports. */
+@media (max-width: 1080px) {
+  .zq-formlayout { grid-template-columns: minmax(0, 1fr) !important; }
+  .zq-formlayout > :last-child { position: static !important; }
+}
+@media (max-width: 720px) {
+  .zq-fieldgrid { grid-template-columns: minmax(0, 1fr) !important; }
+}
+
+/* Point of sale collapses its two columns on narrow screens. */
+@media (max-width: 1080px) {
+  .zq-pos { grid-template-columns: minmax(0, 1fr) !important; }
+}

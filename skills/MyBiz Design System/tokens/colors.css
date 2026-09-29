@@ -1,0 +1,28 @@
+:root{
+/* ── Brand: Burgundy ─────────────────────────────── */
+--burgundy-50:#FDF4F6;--burgundy-100:#F9E5EA;--burgundy-200:#F0C6D2;--burgundy-300:#DE93A6;--burgundy-400:#C55C79;--burgundy-500:#A83355;--burgundy-600:#8F1C42;--burgundy-700:#77092E;--burgundy-800:#5F0825;--burgundy-900:#4A0620;--burgundy-950:#2E0412;
+--brand:var(--burgundy-700);--brand-hover:var(--burgundy-800);--brand-active:var(--burgundy-900);--brand-subtle:var(--burgundy-50);--brand-subtle-hover:var(--burgundy-100);--brand-border:var(--burgundy-200);--brand-on:#FFFFFF;
+
+/* ── Neutrals: warm ink ──────────────────────────── */
+--n-0:#FFFFFF;--n-25:#FBFAFA;--n-50:#F6F5F5;--n-100:#EFEDEE;--n-200:#E2DFE1;--n-300:#CBC7CA;--n-400:#A6A0A4;--n-500:#7A7276;--n-600:#5C5559;--n-700:#443E42;--n-800:#2C272A;--n-900:#1A1619;--n-950:#0D0B0C;
+
+/* ── Accents: record & label colors ──────────────── */
+--accent-amber:#E8A33D;--accent-amber-bg:#FDF1DC;--accent-amber-fg:#7A4E05;
+--accent-teal:#0F8B84;--accent-teal-bg:#DCF2F0;--accent-teal-fg:#0A5B57;
+--accent-blue:#2563C9;--accent-blue-bg:#DFE9FB;--accent-blue-fg:#17417F;
+--accent-violet:#6D4AC4;--accent-violet-bg:#EBE4FB;--accent-violet-fg:#42297F;
+--accent-green:#2E8B4F;--accent-green-bg:#DEF2E4;--accent-green-fg:#1C5B33;
+--accent-rose:#C33862;--accent-rose-bg:#FCE4EB;--accent-rose-fg:#82203F;
+
+/* ── Semantic status ─────────────────────────────── */
+--success:#2E8B4F;--success-bg:#DEF2E4;--warning:#D08A12;--warning-bg:#FDF1DC;--danger:#C0272D;--danger-bg:#FBE4E4;--danger-hover:#9C1F24;--info:#2563C9;--info-bg:#DFE9FB;
+
+/* ── Semantic aliases: text ──────────────────────── */
+--text-strong:var(--n-900);--text-body:var(--n-800);--text-muted:var(--n-500);--text-subtle:var(--n-400);--text-inverse:var(--n-0);--text-brand:var(--burgundy-700);--text-link:var(--burgundy-700);--text-link-hover:var(--burgundy-900);--text-danger:var(--danger);
+
+/* ── Semantic aliases: surface ───────────────────── */
+--surface-page:var(--n-0);--surface-sunken:var(--n-50);--surface-card:var(--n-0);--surface-raised:var(--n-0);--surface-hover:var(--n-50);--surface-active:var(--n-100);--surface-inverse:var(--n-900);--surface-shell:var(--burgundy-950);--surface-shell-hover:rgba(255,255,255,.08);--surface-overlay:rgba(13,11,12,.48);--surface-scrim:rgba(13,11,12,.72);
+
+/* ── Semantic aliases: border ────────────────────── */
+--border-subtle:var(--n-100);--border-default:var(--n-200);--border-strong:var(--n-300);--border-focus:var(--burgundy-500);--focus-ring:0 0 0 3px rgba(168,51,85,.32);
+}

@@ -1,0 +1,181 @@
+import { useRef, useState } from 'react'
+import { Badge } from '../../ds/components/core/Badge.jsx'
+import { Button } from '../../ds/components/core/Button.jsx'
+import { Input } from '../../ds/components/forms/Input.jsx'
+import { Dialog } from '../../ds/components/feedback/Dialog.jsx'
+import { DataTable } from '../../ds/components/data/DataTable.jsx'
+
+/**
+ * Shared tools for the register screens (Factories, Suppliers, Manufacturers,
+ * Units of Measure): a CSV/paste bulk-upload dialog and a field-driven edit
+ * dialog. Both take the same `fields` config — [{ key, label, placeholder }],
+ * first field is the record's unique name.
+ */
+
+/** Split pasted or uploaded text into rows of cells. Tabs win over commas so a paste from a spreadsheet works as-is. */
+function parseDelimited(text) {
+  const delim = text.includes('\t') ? '\t' : ','
+  return text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const cells = []
+      let cur = ''
+      let inQuotes = false
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i]
+        if (inQuotes) {
+          if (ch === '"') {
+            if (line[i + 1] === '"') { cur += '"'; i++ } else inQuotes = false
+          } else cur += ch
+        } else if (ch === '"') inQuotes = true
+        else if (ch === delim) { cells.push(cur.trim()); cur = '' }
+        else cur += ch
+      }
+      cells.push(cur.trim())
+      return cells
+    })
+}
+
+const textareaStyle = {
+  width: '100%', minHeight: 130, padding: '10px 12px', resize: 'vertical',
+  background: 'var(--surface-card)', border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-control)', boxShadow: 'var(--shadow-xs)',
+  font: 'var(--fw-regular) var(--text-sm)/1.5 var(--font-mono)', color: 'var(--text-strong)', outline: 'none',
+}
+
+export function BulkUploadDialog({ open, onClose, entityLabel, entityLabelPlural, fields, existingNames, onImport }) {
+  const [text, setText] = useState(null)
+  const fileRef = useRef(null)
+  const value = text ?? ''
+
+  const close = () => { setText(null); onClose() }
+
+  const headerWords = new Set(fields.flatMap((f) => [f.key.toLowerCase(), f.label.toLowerCase()]))
+  const parsed = parseDelimited(value)
+  const body = parsed.length && parsed[0].some((c) => headerWords.has(c.toLowerCase())) ? parsed.slice(1) : parsed
+
+  const taken = new Set((existingNames || []).map((n) => n.toLowerCase()))
+  const seen = new Set()
+  const rows = body.map((cells) => {
+    const record = Object.fromEntries(fields.map((f, i) => [f.key, cells[i] || '']))
+    const name = record[fields[0].key]
+    let problem = ''
+    if (!name) problem = `${fields[0].label} is required`
+    else if (taken.has(name.toLowerCase())) problem = 'Already registered — skipped'
+    else if (seen.has(name.toLowerCase())) problem = 'Duplicate row — skipped'
+    if (name) seen.add(name.toLowerCase())
+    return { record, problem }
+  })
+  const valid = rows.filter((r) => !r.problem).map((r) => r.record)
+
+  const pickFile = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => setText(String(reader.result || ''))
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
+  const doImport = () => {
+    onImport(valid)
+    close()
+  }
+
+  const previewColumns = [
+    ...fields.map((f) => ({ key: f.key, label: f.label, width: f.key === fields[0].key ? 180 : 140 })),
+    { key: '_status', label: 'Status', width: 190 },
+  ]
+  const previewRows = rows.map((r) => ({
+    ...r.record,
+    _status: r.problem ? <Badge tone="warning">{r.problem}</Badge> : <Badge tone="success">Ready</Badge>,
+  }))
+
+  return (
+    <Dialog
+      open={open}
+      width={720}
+      title={`Bulk upload ${entityLabelPlural}`}
+      description={`Paste rows from a spreadsheet or choose a CSV file. Columns in order: ${fields.map((f) => f.label).join(', ')}. Only the first column is required; a header row is detected and skipped.`}
+      onClose={close}
+      footer={
+        <>
+          <Button variant="secondary" onClick={close}>Cancel</Button>
+          <Button iconLeft="upload" disabled={!valid.length} onClick={doImport}>
+            Import {valid.length || ''} {valid.length === 1 ? entityLabel : entityLabelPlural}
+          </Button>
+        </>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Button variant="secondary" iconLeft="file-up" onClick={() => fileRef.current?.click()}>Choose CSV file</Button>
+          <input ref={fileRef} type="file" accept=".csv,.tsv,.txt" style={{ display: 'none' }} onChange={pickFile} />
+          <span style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>…or paste the rows below.</span>
+        </div>
+
+        <textarea
+          value={value}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={`e.g.\n${fields.map((f) => f.placeholder || f.label).join(', ')}`}
+          style={textareaStyle}
+        />
+
+        {rows.length > 0 && (
+          <div style={{ overflowX: 'auto', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)' }}>
+            <DataTable columns={previewColumns} rows={previewRows} selectable={false} showRowNumbers />
+          </div>
+        )}
+      </div>
+    </Dialog>
+  )
+}
+
+export function EditRecordDialog({ open, onClose, entityLabel, fields, record, existingNames, onSave }) {
+  const [draft, setDraft] = useState(null)
+  const [err, setErr] = useState('')
+  const values = draft ?? record ?? {}
+
+  const close = () => { setDraft(null); setErr(''); onClose() }
+
+  const save = () => {
+    const nameKey = fields[0].key
+    const name = (values[nameKey] || '').trim()
+    if (!name) { setErr(`${fields[0].label} is required`); return }
+    const clash = (existingNames || []).some((n) => n.toLowerCase() === name.toLowerCase() && n.toLowerCase() !== (record?.[nameKey] || '').toLowerCase())
+    if (clash) { setErr(`That ${entityLabel} name is already in use`); return }
+    onSave(Object.fromEntries(fields.map((f) => [f.key, (values[f.key] || '').trim()])))
+    close()
+  }
+
+  return (
+    <Dialog
+      open={open}
+      width={520}
+      title={`Edit ${entityLabel}`}
+      onClose={close}
+      footer={
+        <>
+          <Button variant="secondary" onClick={close}>Cancel</Button>
+          <Button iconLeft="check" onClick={save}>Save changes</Button>
+        </>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {fields.map((f, i) => (
+          <Input
+            key={f.key}
+            label={f.label}
+            autoFocus={i === 0}
+            value={values[f.key] || ''}
+            onChange={(e) => setDraft({ ...values, [f.key]: e.target.value })}
+            placeholder={f.placeholder}
+            error={i === 0 ? err : undefined}
+          />
+        ))}
+      </div>
+    </Dialog>
+  )
+}
