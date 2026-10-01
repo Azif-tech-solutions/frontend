@@ -1,3 +1,4 @@
+//Sidebar.jsx
 import { useMemo, useState } from 'react'
 import { Avatar } from '../ds/components/core/Avatar.jsx'
 import { Icon } from '../ds/components/core/Icon.jsx'

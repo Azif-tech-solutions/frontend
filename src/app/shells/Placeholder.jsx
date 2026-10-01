@@ -1,3 +1,4 @@
+//placeholder.jsx
 import { Badge } from '../../ds/components/core/Badge.jsx'
 import { Icon } from '../../ds/components/core/Icon.jsx'
 import { PageHeader } from './PageHeader.jsx'

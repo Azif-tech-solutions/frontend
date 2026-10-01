@@ -86,12 +86,16 @@ export default function Overview({ onNavigate }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 14 }}>
           <QuickAction
             icon="factory"
-            title={noFactories ? 'Create your first factory' : 'Create a factory'}
+            title={noFactories ? 'Create your first factory' : 'Create aa factory'}
             description={noFactories
               ? 'Required before stock can be registered or any Factory screen used.'
               : 'Add another production site to the register.'}
             urgent={noFactories}
-            onClick={() => onNavigate({ id: 'f.factories', view: 'factories', label: 'Factories' })}
+            onClick={() => {
+            onNavigate({ id: 'ai.eri', view: 'ai.eri',  })
+              // onNavigate({ id: 'f.factories', view: 'factories', label: 'Factories' })
+            }
+            }
           />
           <QuickAction
             icon="package"

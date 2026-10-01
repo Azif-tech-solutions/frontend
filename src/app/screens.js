@@ -1,6 +1,6 @@
 // view key → screen component. Anything absent falls back to Placeholder,
 // so every nav item in nav.js resolves whether or not it has been designed yet.
-
+// screens.js
 import Overview from './Overview'
 import StockRegistration from './StockRegistration'
 import ProductVariation from './ProductVariation'
@@ -269,7 +269,7 @@ export const screens = {
   // 5.11 Barcode & QR
   'b.scan': ScanAndLabel,
 
-  // 5.9 AI-Powered Features
+  // 5.9 AI-Powered 
   'ai.assistant': Assistant,
   'ai.reorder': ReorderForecast,
   'ai.recipe': RecipeOptimizer,
@@ -277,6 +277,7 @@ export const screens = {
   'ai.demand': DemandForecast,
   'ai.fraud': AnomalyDetection,
   'ai.ocr': DocumentOCR,
+  'ai.eri':DocumentOCR,
   'ai.briefing': ExecutiveBriefing,
 
   // Settings

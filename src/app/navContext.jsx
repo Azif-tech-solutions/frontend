@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-
+//navContext.jsx
 /**
  * Gives any screen — and the shared PageHeader — access to the app's navigate
  * function, so breadcrumbs can route without every screen threading a prop.

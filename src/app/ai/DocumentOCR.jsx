@@ -12,7 +12,7 @@ import { ocrJobs, ocrExtraction } from '../sampleAI.js'
 
 const STATUS_TONE = { 'Awaiting review': 'warning', Confirmed: 'success', Discarded: 'neutral' }
 
-export default function DocumentOCR({ leaf, moduleLabel, parentLabel }) {
+export default function DocumentOCR({ leaf, moduleLabel, parentLabel,onNavigate }) {
   const [values, setValues] = useState(
     Object.fromEntries(ocrExtraction.fields.map((f) => [f.label, f.value ?? '']))
   )
@@ -44,7 +44,9 @@ export default function DocumentOCR({ leaf, moduleLabel, parentLabel }) {
         description="Reads a photographed or scanned delivery note or supplier invoice and pre-fills the matching Material/Recipe Receive or expense entry fields, so they can be checked rather than typed."
         actions={
           <>
-            <Button variant="secondary" iconLeft="camera">Photograph document</Button>
+            <Button variant="secondary" iconLeft="camera" onClick={()=>{
+              onNavigate({ id: 'ai.eri', view: 'ai.eri', label: 'ERI' })
+            }}>Photograph document</Button>
             <Button iconLeft="upload">Upload document</Button>
           </>
         }
