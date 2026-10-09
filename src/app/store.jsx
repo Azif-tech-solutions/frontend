@@ -15,7 +15,7 @@ const refLabel = (prefix, n) => `${prefix}-${String(n).padStart(4, '0')}`
 const emptyState = {
   loggedIn: false,
   user: { name: '', email: '', role: 'Administrator',userId:'',tenantId:'' },
-  company: { name: '', address: '', phone: '',email:'',taxRegistrationNumber:'',onboarded: false },
+  company: { name: '', address: '', phone: '',email:'',taxRegistrationNumber:'',onboarded: true },
   branches: [],
   factories: [],
   finishedFieldTemplate: [],
