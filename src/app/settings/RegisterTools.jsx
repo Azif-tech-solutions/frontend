@@ -4,7 +4,7 @@ import { Button } from '../../ds/components/core/Button.jsx'
 import { Input } from '../../ds/components/forms/Input.jsx'
 import { Dialog } from '../../ds/components/feedback/Dialog.jsx'
 import { DataTable } from '../../ds/components/data/DataTable.jsx'
-
+import { Dropdown } from '../Dropdown.jsx'
 /**
  * Shared tools for the register screens (Factories, Suppliers, Manufacturers,
  * Units of Measure): a CSV/paste bulk-upload dialog and a field-driven edit
@@ -45,8 +45,17 @@ const textareaStyle = {
   font: 'var(--fw-regular) var(--text-sm)/1.5 var(--font-mono)', color: 'var(--text-strong)', outline: 'none',
 }
 
-export function BulkUploadDialog({ open, onClose, entityLabel, entityLabelPlural, fields, existingNames, onImport }) {
+// Replace the existing BulkUploadDialog function in RegisterTools.jsx with this one.
+// parseDelimited and textareaStyle stay exactly as they are. No new imports are needed.
+//
+// Two new optional props, so the other registers keep working unchanged:
+//   validateRow(record) => string   a message blocks that row; '' (or nothing) means it's fine
+//   hint                            replaces the default "Only the first column is required;" text
+// onImport may now be async. Returning false keeps the dialog open (e.g. some rows failed to save).
+
+export function BulkUploadDialog({ open, onClose, entityLabel, entityLabelPlural, fields, existingNames, onImport, validateRow, hint }) {
   const [text, setText] = useState(null)
+  const [importing, setImporting] = useState(false)
   const fileRef = useRef(null)
   const value = text ?? ''
 
@@ -65,6 +74,8 @@ export function BulkUploadDialog({ open, onClose, entityLabel, entityLabelPlural
     if (!name) problem = `${fields[0].label} is required`
     else if (taken.has(name.toLowerCase())) problem = 'Already registered — skipped'
     else if (seen.has(name.toLowerCase())) problem = 'Duplicate row — skipped'
+    // Register-specific rules (required columns, formats), only checked once the name checks pass.
+    else if (validateRow) problem = validateRow(record) || ''
     if (name) seen.add(name.toLowerCase())
     return { record, problem }
   })
@@ -79,9 +90,14 @@ export function BulkUploadDialog({ open, onClose, entityLabel, entityLabelPlural
     e.target.value = ''
   }
 
-  const doImport = () => {
-    onImport(valid)
-    close()
+  const doImport = async () => {
+    setImporting(true)
+    try {
+      const result = await onImport(valid)
+      if (result !== false) close()
+    } finally {
+      setImporting(false)
+    }
   }
 
   const previewColumns = [
@@ -98,20 +114,20 @@ export function BulkUploadDialog({ open, onClose, entityLabel, entityLabelPlural
       open={open}
       width={720}
       title={`Bulk upload ${entityLabelPlural}`}
-      description={`Paste rows from a spreadsheet or choose a CSV file. Columns in order: ${fields.map((f) => f.label).join(', ')}. Only the first column is required; a header row is detected and skipped.`}
+      description={`Paste rows from a spreadsheet or choose a CSV file. Columns in order: ${fields.map((f) => f.label).join(', ')}. ${hint ?? 'Only the first column is required;'} A header row is detected and skipped.`}
       onClose={close}
       footer={
         <>
-          <Button variant="secondary" onClick={close}>Cancel</Button>
-          <Button iconLeft="upload" disabled={!valid.length} onClick={doImport}>
-            Import {valid.length || ''} {valid.length === 1 ? entityLabel : entityLabelPlural}
+          <Button variant="secondary" onClick={close} disabled={importing}>Cancel</Button>
+          <Button iconLeft="upload" disabled={!valid.length || importing} onClick={doImport}>
+            {importing ? 'Importing…' : `Import ${valid.length || ''} ${valid.length === 1 ? entityLabel : entityLabelPlural}`}
           </Button>
         </>
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Button variant="secondary" iconLeft="file-up" onClick={() => fileRef.current?.click()}>Choose CSV file</Button>
+          <Button variant="secondary" iconLeft="file-up" onClick={() => fileRef.current?.click()} disabled={importing}>Choose CSV file</Button>
           <input ref={fileRef} type="file" accept=".csv,.tsv,.txt" style={{ display: 'none' }} onChange={pickFile} />
           <span style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>…or paste the rows below.</span>
         </div>
@@ -121,6 +137,7 @@ export function BulkUploadDialog({ open, onClose, entityLabel, entityLabelPlural
           onChange={(e) => setText(e.target.value)}
           placeholder={`e.g.\n${fields.map((f) => f.placeholder || f.label).join(', ')}`}
           style={textareaStyle}
+          disabled={importing}
         />
 
         {rows.length > 0 && (
@@ -133,21 +150,119 @@ export function BulkUploadDialog({ open, onClose, entityLabel, entityLabelPlural
   )
 }
 
+// export function EditRecordDialog({ open, onClose, entityLabel, fields, record, existingNames, onSave }) {
+//   const [draft, setDraft] = useState(null)
+//   const [err, setErr] = useState('')
+//   const values = draft ?? record ?? {}
+
+//   const close = () => { setDraft(null); setErr(''); onClose() }
+
+//   const save = () => {
+//     const nameKey = fields[0].key
+//     const name = (values[nameKey] || '').trim()
+//     if (!name) { setErr(`${fields[0].label} is required`); return }
+//     const clash = (existingNames || []).some((n) => n.toLowerCase() === name.toLowerCase() && n.toLowerCase() !== (record?.[nameKey] || '').toLowerCase())
+//     if (clash) { setErr(`That ${entityLabel} name is already in use`); return }
+//     onSave(Object.fromEntries(fields.map((f) => [f.key, (values[f.key] || '').trim()])))
+//     close()
+//   }
+
+//   return (
+//     <Dialog
+//       open={open}
+//       width={520}
+//       title={`Edit ${entityLabel}`}
+//       onClose={close}
+//       footer={
+//         <>
+//           <Button variant="secondary" onClick={close}>Cancel</Button>
+//           <Button iconLeft="check" onClick={save}>Save changes</Button>
+//         </>
+//       }
+//     >
+//       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+//         {fields.map((f, i) => (
+//           <Input
+//             key={f.key}
+//             label={f.label}
+//             autoFocus={i === 0}
+//             value={values[f.key] || ''}
+//             onChange={(e) => setDraft({ ...values, [f.key]: e.target.value })}
+//             placeholder={f.placeholder}
+//             error={i === 0 ? err : undefined}
+//           />
+//         ))}
+//       </div>
+//     </Dialog>
+//   )
+// }
+
+// Replace the existing EditRecordDialog in RegisterTools.jsx with this version.
+// Add this import at the top of RegisterTools.jsx (adjust the path if needed):
+//   import { Dropdown } from '../Dropdown.jsx'
+//
+// Plain text fields work exactly as before. Fields can now also have:
+//   type: 'select'    + options: [{ value, label }]
+//   type: 'checkbox'
+//   type: 'number'
+//   required: true               (checked on save; the first field is always required)
+//   showIf: (values) => boolean  (field only shows, and is only checked, when true)
+//   validate: (value, values) => string | undefined   (return a message to block saving)
+
 export function EditRecordDialog({ open, onClose, entityLabel, fields, record, existingNames, onSave }) {
   const [draft, setDraft] = useState(null)
-  const [err, setErr] = useState('')
+  const [errors, setErrors] = useState({})
+  const [saving, setSaving] = useState(false)
   const values = draft ?? record ?? {}
 
-  const close = () => { setDraft(null); setErr(''); onClose() }
+  const isVisible = (f) => !f.showIf || f.showIf(values)
+  const setValue = (key, value) => setDraft({ ...values, [key]: value })
+  const asText = (v) => String(v ?? '').trim()
 
-  const save = () => {
+  const close = () => { setDraft(null); setErrors({}); onClose() }
+
+  const save = async () => {
+    const e = {}
     const nameKey = fields[0].key
-    const name = (values[nameKey] || '').trim()
-    if (!name) { setErr(`${fields[0].label} is required`); return }
-    const clash = (existingNames || []).some((n) => n.toLowerCase() === name.toLowerCase() && n.toLowerCase() !== (record?.[nameKey] || '').toLowerCase())
-    if (clash) { setErr(`That ${entityLabel} name is already in use`); return }
-    onSave(Object.fromEntries(fields.map((f) => [f.key, (values[f.key] || '').trim()])))
-    close()
+    const name = asText(values[nameKey])
+
+    // First field: required and must be unique (same rules as before).
+    if (!name) {
+      e[nameKey] = `${fields[0].label} is required`
+    } else {
+      const clash = (existingNames || []).some(
+        (n) => n.toLowerCase() === name.toLowerCase() && n.toLowerCase() !== (record?.[nameKey] || '').toLowerCase()
+      )
+      if (clash) e[nameKey] = `That ${entityLabel} name is already in use`
+    }
+
+    // Remaining fields: only the visible ones are checked.
+    fields.forEach((f, i) => {
+      if (i === 0 || !isVisible(f) || f.type === 'checkbox') return
+      if (f.required && !asText(values[f.key])) {
+        e[f.key] = `${f.label} is required`
+      } else if (f.validate) {
+        const message = f.validate(values[f.key], values)
+        if (message) e[f.key] = message
+      }
+    })
+
+    setErrors(e)
+    if (Object.keys(e).length) return
+
+    // Build the record to save: checkboxes stay booleans, everything else is trimmed text.
+    const patch = Object.fromEntries(
+      fields.map((f) => [f.key, f.type === 'checkbox' ? !!values[f.key] : asText(values[f.key])])
+    )
+
+    setSaving(true)
+    try {
+      // onSave may be async. Returning false keeps the dialog open (e.g. the API call failed).
+      const result = await onSave(patch)
+      if (result !== false) close()
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -158,23 +273,47 @@ export function EditRecordDialog({ open, onClose, entityLabel, fields, record, e
       onClose={close}
       footer={
         <>
-          <Button variant="secondary" onClick={close}>Cancel</Button>
-          <Button iconLeft="check" onClick={save}>Save changes</Button>
+          <Button variant="secondary" onClick={close} disabled={saving}>Cancel</Button>
+          <Button iconLeft="check" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</Button>
         </>
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {fields.map((f, i) => (
-          <Input
-            key={f.key}
-            label={f.label}
-            autoFocus={i === 0}
-            value={values[f.key] || ''}
-            onChange={(e) => setDraft({ ...values, [f.key]: e.target.value })}
-            placeholder={f.placeholder}
-            error={i === 0 ? err : undefined}
-          />
-        ))}
+        {fields.filter(isVisible).map((f, i) => {
+          if (f.type === 'select') {
+            return (
+              <Dropdown
+                key={f.key}
+                label={f.label}
+                value={values[f.key] ?? ''}
+                onChange={(v) => setValue(f.key, v)}
+                options={f.options || []}
+              />
+            )
+          }
+
+          if (f.type === 'checkbox') {
+            return (
+              <label key={f.key} style={{ display: 'flex', alignItems: 'center', gap: 10, font: 'var(--type-ui)', color: 'var(--text-strong)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={!!values[f.key]} onChange={(e) => setValue(f.key, e.target.checked)} />
+                {f.label}
+              </label>
+            )
+          }
+
+          return (
+            <Input
+              key={f.key}
+              label={f.label}
+              type={f.type === 'number' ? 'number' : undefined}
+              autoFocus={i === 0}
+              value={values[f.key] ?? ''}
+              onChange={(e) => setValue(f.key, e.target.value)}
+              placeholder={f.placeholder}
+              error={errors[f.key]}
+            />
+          )
+        })}
       </div>
     </Dialog>
   )

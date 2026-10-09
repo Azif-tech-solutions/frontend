@@ -5,7 +5,12 @@ import { Input } from '../ds/components/forms/Input.jsx'
 import { Dropdown } from './Dropdown.jsx'
 import { useStore } from './store.jsx'
 import { countries } from './countries.js'
+import FactoryApi from '../api/FactoryApi.js'
+import AuthApi from '../api/AuthApi.js'
+import Loader from '../ds/components/core/Loader.jsx'
 
+const factoryApi=new FactoryApi()
+const authApi=new AuthApi()
 const STEPS = [
   { id: 1, label: 'Company details' },
   { id: 2, label: 'First branch' },
@@ -27,13 +32,15 @@ function PhoneField({ label, countryCode, onCountryChange, number, onNumberChang
 }
 
 export default function Onboarding() {
-  const { completeOnboarding } = useStore()
+  const { completeOnboarding,showToast} = useStore()
   const [step, setStep] = useState(1)
 
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
   const [phoneCountry, setPhoneCountry] = useState('')
   const [phoneNumber, setPhoneNumber] = useState('')
+  const [taxRegistration, setTaxRegistration] = useState('')
+  const [email, setEmail] = useState('')
   const [errors, setErrors] = useState({})
 
   const [branchName, setBranchName] = useState('')
@@ -41,9 +48,21 @@ export default function Onboarding() {
 
   const [factoryName, setFactoryName] = useState('')
   const [factoryCode, setFactoryCode] = useState('')
+  const [factoryAddress, setFactoryAddress] = useState('')
+  const [factoryState, setFactoryState] = useState('')
+  const [factoryPhone, setFactoryPhone] = useState('')
+  const [factoryVatRate, setFactoryVatRate] = useState('')
+  const [factoryVatEnabled, setFactoryVatEnabled] = useState(false)
+  const [factoryVatRegistration, setFactoryVatRegistration] = useState('')
+  const [factoryStatus, setFactoryStatus] = useState('ACTIVE')//active and inactive
+  const [factoryErrors, setFactoryErrors] = useState({})
+  const [loading, setLoading] = useState(false)
+
 
   const validateCompany = () => {
     const e = {}
+    if (!taxRegistration.trim()) e.taxRegistration = 'Tax registration number is required'
+    if (!email.trim()) e.email = 'Company email is required'
     if (!name.trim()) e.name = 'Company name is required'
     if (!address.trim()) e.address = 'Company address is required'
     if (!phoneCountry || !phoneNumber.trim()) e.phone = 'Company phone number is required'
@@ -51,32 +70,100 @@ export default function Onboarding() {
     return Object.keys(e).length === 0
   }
 
-  const goNext = () => {
-    if (step === 1) { if (!validateCompany()) return }
-    setStep((s) => Math.min(LAST_STEP, s + 1))
+  const validateFactory = () => {
+  const e = {}
+  const started = factoryVatEnabled ||
+    [factoryName, factoryCode, factoryAddress, factoryState, factoryPhone].some((v) => v.trim())
+
+  if (started) {
+    if (!factoryName.trim()) e.factoryName = 'Factory name is required'
+    if (!factoryCode.trim()) e.factoryCode = 'Factory code is required'
+    if (!factoryAddress.trim()) e.factoryAddress = 'Factory address is required'
+    if (!factoryState.trim()) e.factoryState = 'State is required'
+    if (!factoryPhone.trim()) e.factoryPhone = 'Factory phone number is required'
   }
+
+  if (factoryVatEnabled) {
+    const rate = Number(factoryVatRate)
+    if (!String(factoryVatRate).trim()) e.factoryVatRate = 'VAT rate is required'
+    else if (Number.isNaN(rate) || rate < 0 || rate > 100) e.factoryVatRate = 'Enter a rate between 0 and 100'
+    if (!factoryVatRegistration.trim()) e.factoryVatRegistration = 'VAT registration number is required'
+  }
+
+  setFactoryErrors(e)
+  return Object.keys(e).length === 0
+}
+const goNext = () => {
+  if (step === 1) { if (!validateCompany()) return }
+  if (step === 3) { if (!validateFactory()) return }
+  setStep((s) => Math.min(LAST_STEP, s + 1))
+}
+
+
   const goBack = () => setStep((s) => Math.max(1, s - 1))
   const skipBranch = () => {
     setBranchName(''); setBranchNumber('')
     setStep(3)
   }
+ 
+
   const skipFactory = () => {
-    setFactoryName(''); setFactoryCode('')
-    setStep(4)
-  }
+  setFactoryName(''); setFactoryCode(''); setFactoryAddress(''); setFactoryState('')
+  setFactoryPhone(''); setFactoryVatRate(''); setFactoryVatEnabled(false)
+  setFactoryVatRegistration(''); setFactoryStatus('ACTIVE')
+  setFactoryErrors({})
+  setStep(4)
+}
 
   const phoneDial = countries.find((c) => c.code === phoneCountry)?.dial || ''
   const phone = `${phoneDial} ${phoneNumber.trim()}`.trim()
 
-  const finish = () => {
-    if (!validateCompany()) { setStep(1); return }
-    completeOnboarding(
-      { name: name.trim(), address: address.trim(), phone },
-      { name: branchName, number: branchNumber },
-      { name: factoryName, code: factoryCode },
-    )
-  }
+ const finish = async () => {
+  if (!validateCompany()) { setStep(1); return }
+  if (hasFactory && !validateFactory()) { setStep(3); return }
 
+  setLoading(true)
+  let stage = 'Company setup'   // tells the error toast which call failed
+  let factory = null            // declared out here so it's in scope below
+
+  try {
+    await authApi.updateCompany({
+      companyName: name.trim(),
+      headOfficeAddress: address.trim(),
+      primaryPhone: phone.trim(),
+      primaryEmail: email.trim(),
+      taxRegistrationNumber: taxRegistration.trim(),
+    })
+
+    // The factory step is optional, so only call the API if one was entered.
+    if (hasFactory) {
+        stage = 'Factory setup'
+        const res = await factoryApi.createFactory({
+          name: factoryName.trim(),
+          code: factoryCode.trim(),
+          address: factoryAddress.trim(),
+          state: factoryState.trim(),
+          phone: factoryPhone.trim(),
+          vatEnabled: factoryVatEnabled,
+          vatRate: factoryVatEnabled ? Number(factoryVatRate) : 0,
+          vatRegistrationNumber: factoryVatEnabled ? factoryVatRegistration.trim() : '',
+          status: factoryStatus,
+        })
+        factory = res.data
+      }
+
+      // Only reached if every API call above succeeded.
+      completeOnboarding(
+        { name: name.trim(), address: address.trim(), phone, taxRegistration: taxRegistration.trim() },
+        { name: branchName, number: branchNumber },
+        factory, // null when skipped; completeOnboarding already handles that
+      )
+    } catch (error) {
+      showToast(`${stage} failed`, error.message, true)
+    } finally {
+      setLoading(false) // runs on success AND on failure
+    }
+  }
   const hasBranch = branchName.trim() || branchNumber.trim()
   const hasFactory = !!factoryName.trim()
 
@@ -113,6 +200,8 @@ export default function Onboarding() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <Input label="Company name" size="lg" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Ridgeway Manufacturing Ltd" error={errors.name} />
             <Input label="Company address" size="lg" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street, city, state" error={errors.address} />
+            <Input label="Tax registration number" size="lg" value={taxRegistration} onChange={(e) => setTaxRegistration(e.target.value)} placeholder="Tax registration number" error={errors.taxRegistration} />
+            <Input label="Company email" size="lg" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Company email" error={errors.email} />
             <PhoneField label="Company phone number" countryCode={phoneCountry} onCountryChange={setPhoneCountry} number={phoneNumber} onNumberChange={(e) => setPhoneNumber(e.target.value)} error={errors.phone} />
           </div>
         )}
@@ -136,9 +225,28 @@ export default function Onboarding() {
               can be used until one exists. Add your first one now, or create it later from <b style={{ color: 'var(--text-strong)' }}>Factory › Factories</b>.
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 14 }}>
-              <Input label="Factory name" size="lg" value={factoryName} onChange={(e) => setFactoryName(e.target.value)} placeholder="e.g. Ridgeway Factory A" />
-              <Input label="Factory code" size="lg" value={factoryCode} onChange={(e) => setFactoryCode(e.target.value)} placeholder="e.g. FA" />
+              <Input label="Factory name" size="lg" value={factoryName} onChange={(e) => setFactoryName(e.target.value)} placeholder="e.g. Ridgeway Factory A" error={factoryErrors.factoryName} />
+              <Input label="Factory code" size="lg" value={factoryCode} onChange={(e) => setFactoryCode(e.target.value)} placeholder="e.g. FA" error={factoryErrors.factoryCode} />
             </div>
+            <Input label="Factory address" size="lg" value={factoryAddress} onChange={(e) => setFactoryAddress(e.target.value)} placeholder="Street, city" error={factoryErrors.factoryAddress} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <Input label="State" size="lg" value={factoryState} onChange={(e) => setFactoryState(e.target.value)} placeholder="e.g. Lagos" error={factoryErrors.factoryState} />
+              <Input label="Factory phone number" size="lg" value={factoryPhone} onChange={(e) => setFactoryPhone(e.target.value)} placeholder="e.g. +234 800 000 0000" error={factoryErrors.factoryPhone} />
+            </div>
+            <Dropdown
+              label="Status" size="lg" value={factoryStatus} onChange={setFactoryStatus}
+              options={[{ value: 'ACTIVE', label: 'Active' }, { value: 'INACTIVE', label: 'Inactive' }]}
+            />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, font: 'var(--type-ui)', color: 'var(--text-strong)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={factoryVatEnabled} onChange={(e) => setFactoryVatEnabled(e.target.checked)} />
+              This factory charges VAT
+            </label>
+            {factoryVatEnabled && (
+              <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: 14 }}>
+                <Input label="VAT rate (%)" size="lg" type="number" value={factoryVatRate} onChange={(e) => setFactoryVatRate(e.target.value)} placeholder="e.g. 7.5" error={factoryErrors.factoryVatRate} />
+                <Input label="VAT registration number" size="lg" value={factoryVatRegistration} onChange={(e) => setFactoryVatRegistration(e.target.value)} placeholder="VAT registration number" error={factoryErrors.factoryVatRegistration} />
+              </div>
+            )}
           </div>
         )}
 
@@ -178,17 +286,20 @@ export default function Onboarding() {
             </div>
           </div>
         )}
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          {step > 1 ? <Button variant="secondary" size="lg" onClick={goBack}>Back</Button> : <span />}
-          <div style={{ display: 'flex', gap: 10 }}>
-            {step === 2 && <Button variant="ghost" size="lg" onClick={skipBranch}>Skip this step</Button>}
-            {step === 3 && <Button variant="ghost" size="lg" onClick={skipFactory}>Skip this step</Button>}
-            {step < LAST_STEP
-              ? <Button size="lg" iconRight="chevron-right" onClick={goNext}>Continue</Button>
-              : <Button size="lg" iconLeft="check" onClick={finish}>Complete setup</Button>}
+        {loading ? (
+          <Loader label="Setting up your company…" />
+        ) : (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {step > 1 ? <Button variant="secondary" size="lg" onClick={goBack}>Back</Button> : <span />}
+            <div style={{ display: 'flex', gap: 10 }}>
+              {step === 2 && <Button variant="ghost" size="lg" onClick={skipBranch}>Skip this step</Button>}
+              {step === 3 && <Button variant="ghost" size="lg" onClick={skipFactory}>Skip this step</Button>}
+              {step < LAST_STEP
+                ? <Button size="lg" iconRight="chevron-right" onClick={goNext}>Continue</Button>
+                : <Button size="lg" iconLeft="check" onClick={finish}>Complete setup</Button>}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Badge } from '../../ds/components/core/Badge.jsx'
 import { Button } from '../../ds/components/core/Button.jsx'
 import { Input } from '../../ds/components/forms/Input.jsx'
@@ -9,6 +9,10 @@ import { suppliers as sampleSuppliers } from '../sample.js'
 import { useStore } from '../store.jsx'
 import { fmtDate } from '../utils.js'
 import { BulkUploadDialog, EditRecordDialog } from './RegisterTools.jsx'
+import FactoryApi from '../../api/FactoryApi.ts'
+import { SUPPLIER_BULK_FIELDS, SUPPLIER_BULK_HINT, validateSupplierRow, importSuppliers } from '../supplierBulk.js'
+import Loader from '../../ds/components/core/Loader.jsx'
+const factoryApi = new FactoryApi()
 
 const FIELDS = [
   { key: 'name', label: 'Supplier name', placeholder: 'Ardova Commodities Ltd' },
@@ -24,27 +28,74 @@ const FIELDS = [
  * so one has to exist before a delivery can name who it came from.
  */
 export default function Suppliers({ leaf, moduleLabel }) {
-  const { suppliers, addSupplier, updateSupplier, removeSupplier, showToast } = useStore()
+  const { suppliers, addSupplier, updateSupplier, removeSupplier, showToast, overrideSuppliers } = useStore()
   const [bulkOpen, setBulkOpen] = useState(false)
   const [editing, setEditing] = useState(null)
 
   const [name, setName] = useState('')
+  const [code, setCode] = useState('')
   const [contact, setContact] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [address, setAddress] = useState('')
   const [supplies, setSupplies] = useState('')
-  const [err, setErr] = useState('')
+  const [errors, setErrors] = useState({})
+  const [loading, setLoading] = useState(false)
 
-  const submit = () => {
+  // Name, code, email and phone are what the backend accepts today, so they are
+  // the only required fields. Contact, address and supplies stay optional.
+  const validate = () => {
+    const e = {}
     const clean = name.trim()
-    if (!clean) { setErr('Supplier name is required'); return }
-    if (suppliers.some((s) => s.name.toLowerCase() === clean.toLowerCase())) {
-      setErr('That supplier is already registered'); return
+    const cleanCode = code.trim()
+
+    if (!clean) e.name = 'Supplier name is required'
+    else if (suppliers.some((s) => s.name.toLowerCase() === clean.toLowerCase())) {
+      e.name = 'That supplier is already registered'
     }
-    addSupplier({ name: clean, contact, phone, email, address, supplies })
-    showToast(`Supplier registered — ${clean}`, supplies.trim() || 'Selectable on raw material deliveries')
-    setName(''); setContact(''); setPhone(''); setEmail(''); setAddress(''); setSupplies(''); setErr('')
+
+    if (!cleanCode) e.code = 'Supplier code is required'
+    else if (suppliers.some((s) => (s.code || '').toLowerCase() === cleanCode.toLowerCase())) {
+      e.code = 'That supplier code is already in use'
+    }
+
+    if (!email.trim()) e.email = 'Email is required'
+    if (!phone.trim()) e.phone = 'Phone number is required'
+
+    setErrors(e)
+    return Object.keys(e).length === 0
+  }
+
+  const submit = async () => {
+    if (!validate()) return
+
+    setLoading(true)
+    try {
+      // 1. Create it on the server
+      const res = await factoryApi.createSupplier({
+        supplierCode: code.trim(),
+        companyName: name.trim(),
+        contactEmail: email.trim(),
+        phone: phone.trim(),
+      })
+
+      // 2. Save it in the store: server fields converted to the store's shape,
+      // plus the optional details the backend doesn't hold yet.
+      addSupplier({
+        ...factoryApi.toStoreSupplier(res.data),
+        contact: contact.trim(),
+        address: address.trim(),
+        supplies: supplies.trim(),
+      })
+
+      showToast(`Supplier registered — ${name.trim()}`, supplies.trim() || 'Selectable on raw material deliveries')
+      setName(''); setCode(''); setContact(''); setPhone(''); setEmail(''); setAddress(''); setSupplies('')
+      setErrors({})
+    } catch (error) {
+      showToast('Supplier registration failed', error.message, true)
+    } finally {
+      setLoading(false) // runs on success AND on failure
+    }
   }
 
   const drop = (s) => {
@@ -52,13 +103,29 @@ export default function Suppliers({ leaf, moduleLabel }) {
     showToast(`Removed supplier — ${s.name}`)
   }
 
-  const importAll = (records) => {
-    records.forEach((r) => addSupplier(r))
-    showToast(`${records.length} supplier${records.length === 1 ? '' : 's'} imported`, 'Selectable on raw material deliveries')
-  }
+  // const importAll = (records) => {
+  //   records.forEach((r) => addSupplier(r))
+  //   showToast(`${records.length} supplier${records.length === 1 ? '' : 's'} imported`, 'Selectable on raw material deliveries')
+  // }
+ const importAll = (records) => importSuppliers(records, { factoryApi, addSupplier, showToast })
+
+  // Load the supplier list from the server and replace what's in the store.
+  useEffect(() => {
+    let cancelled = false
+    factoryApi.listSuppliers()
+      .then(({ data }) => {
+        if (cancelled) return
+        // Arrow function so toStoreSupplier keeps its `this`.
+        overrideSuppliers((data || []).map((s) => factoryApi.toStoreSupplier(s)))
+      })
+      .catch(() => { /* request failed: keep whatever is already in the store */ })
+
+    return () => { cancelled = true }
+  }, [overrideSuppliers])
 
   const columns = [
     { key: 'name', label: 'Supplier', width: 220 },
+    { key: 'code', label: 'Code', width: 120 },
     { key: 'contact', label: 'Contact person', width: 170 },
     { key: 'phone', label: 'Phone', width: 160 },
     { key: 'email', label: 'Email', width: 200 },
@@ -69,6 +136,7 @@ export default function Suppliers({ leaf, moduleLabel }) {
 
   const rows = suppliers.map((s) => ({
     name: s.name,
+    code: s.code || '—',
     contact: s.contact || '—',
     phone: s.phone || '—',
     email: s.email || '—',
@@ -99,19 +167,23 @@ export default function Suppliers({ leaf, moduleLabel }) {
         </Callout>
       )}
 
-      <Panel title="Add a supplier" description="Name is required; everything else is for your own records.">
+      <Panel title="Add a supplier" description="Name, code, email and phone are required; the rest is for your own records.">
         <FieldSet columns={3}>
-          <Input label="Supplier name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Ardova Commodities Ltd" error={err} />
+          <Input label="Supplier name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Ardova Commodities Ltd" error={errors.name} />
+          <Input label="Supplier code" value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. SUP001" error={errors.code} />
+          <Input label="Email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="sales@supplier.com" error={errors.email} />
+          <Input label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+234 …" error={errors.phone} />
           <Input label="Contact person" hint="Optional" value={contact} onChange={(e) => setContact(e.target.value)} placeholder="e.g. A. Bello" />
-          <Input label="Phone" hint="Optional" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+234 …" />
-          <Input label="Email" hint="Optional" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="sales@supplier.com" />
           <Input label="Address" hint="Optional" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street, city, state" />
           <Input label="What they supply" hint="Optional" value={supplies} onChange={(e) => setSupplies(e.target.value)} placeholder="e.g. Refined sugar, preforms" />
         </FieldSet>
-        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-          <Button iconLeft="plus" onClick={submit}>Register supplier</Button>
-          <Button variant="secondary" iconLeft="upload" onClick={() => setBulkOpen(true)}>Bulk upload</Button>
-        </div>
+        {loading ? 
+          <Loader label="Registering supplier..." />
+         : 
+          <div style={{ display: 'flex', gap: 10, marginTop: 16 }}> 
+          <Button iconLeft="plus" onClick={submit} disabled={loading}>{loading ? 'Registering…' : 'Register supplier'}</Button>
+          <Button variant="secondary" iconLeft="upload" onClick={() => setBulkOpen(true)} disabled={loading}>Bulk upload</Button>
+        </div>}
       </Panel>
 
       <Panel title="Registered suppliers" padding={suppliers.length ? 0 : 20}>
@@ -127,7 +199,7 @@ export default function Suppliers({ leaf, moduleLabel }) {
         )}
       </Panel>
 
-      <BulkUploadDialog
+      {/* <BulkUploadDialog
         open={bulkOpen}
         onClose={() => setBulkOpen(false)}
         entityLabel="supplier"
@@ -135,7 +207,18 @@ export default function Suppliers({ leaf, moduleLabel }) {
         fields={FIELDS}
         existingNames={suppliers.map((s) => s.name)}
         onImport={importAll}
-      />
+      /> */}
+<BulkUploadDialog
+  open={bulkOpen}
+  onClose={() => setBulkOpen(false)}
+  entityLabel="supplier"
+  entityLabelPlural="suppliers"
+  fields={SUPPLIER_BULK_FIELDS}
+  hint={SUPPLIER_BULK_HINT}
+  validateRow={(r) => validateSupplierRow(r, suppliers)}
+  existingNames={suppliers.map((s) => s.name)}
+  onImport={importAll}
+/>
 
       <EditRecordDialog
         open={!!editing}

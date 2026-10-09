@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState,useEffect } from 'react'
 import { Badge } from '../../ds/components/core/Badge.jsx'
 import { Button } from '../../ds/components/core/Button.jsx'
 import { Input } from '../../ds/components/forms/Input.jsx'
@@ -9,43 +9,70 @@ import { categories as sampleCategories } from '../sample.js'
 import { useStore } from '../store.jsx'
 import { fmtDate } from '../utils.js'
 import { BulkUploadDialog, EditRecordDialog } from './RegisterTools.jsx'
+import FactoryApi from '../../api/FactoryApi.js'
+import Loader from '../../ds/components/core/Loader.jsx'
+import { CATEGORY_BULK_FIELDS, CATEGORY_BULK_HINT, validateCategoryRow, importCategories } from '../categoryBulk.js'
 
 const FIELDS = [
   { key: 'name', label: 'Category name', placeholder: 'Emulsion' },
-  { key: 'brand', label: 'Brand', placeholder: 'ZifCoat' },
+  { key: 'type', label: 'Type', placeholder: 'ZifCoat' },
   { key: 'note', label: 'Used for', placeholder: 'Water-based wall paints' },
 ]
 
+const factoryApi = new FactoryApi()
 /**
  * Category register — the Type/Group every product and material belongs to
  * (PRD 5.1.4). A category defined here is what the Stock Register offers, and
  * what the grouped Stock Card (GP) / Bin Card (GP) report against.
  */
 export default function Categories({ leaf, moduleLabel }) {
-  const { categories, addCategory, updateCategory, removeCategory, showToast } = useStore()
+  const { categories, addCategory, updateCategory, removeCategory, showToast,overrideCategories } = useStore()
 
   const [name, setName] = useState('')
-  const [brand, setBrand] = useState('')
-  const [note, setNote] = useState('')
+  const [type, setType] = useState('')
+  const [description, setDescription] = useState('')
   const [err, setErr] = useState('')
   const [bulkOpen, setBulkOpen] = useState(false)
   const [editing, setEditing] = useState(null)
+  const [loading, setLoading] = useState(false)
 
   const exists = (n) => categories.some((c) => c.name.toLowerCase() === n.trim().toLowerCase())
 
-  const submit = () => {
+  const submit = async () => {
     const clean = name.trim()
     if (!clean) { setErr('Category name is required'); return }
     if (exists(clean)) { setErr('That category is already defined'); return }
-    addCategory({ name: clean, brand, note })
-    showToast(`Category added — ${clean}${brand.trim() ? ` (${brand.trim()})` : ''}`, 'Selectable on the Stock Register')
-    setName(''); setBrand(''); setNote(''); setErr('')
+    setLoading(true)
+    try {
+      let createdFactory=await factoryApi.createCategory({ name: clean, type, description })
+      addCategory({ id:createdFactory.data.id, name: clean, type, description })
+      showToast(`Category added — ${clean}${type.trim() ? ` (${type.trim()})` : ''}`, 'Selectable on the Stock Register')
+      setName(''); setType(''); setDescription(''); setErr('')
+      // overrideCategories()
+    } catch (e) {
+      showToast('Category registration failed', e.message, true)
+    } finally {
+      setLoading(false)
+    }
+    
   }
 
-  const quickAdd = (c) => {
+  const quickAdd = async(c) => {
+
     if (exists(c.label)) return
-    addCategory({ name: c.label })
-    showToast(`Category added — ${c.label}`, 'Selectable on the Stock Register')
+    
+    // addCategory({ name: c.label })
+    
+    try {
+      let createdFactory=await factoryApi.createCategory({ name: c.label, type:c.value, description:c.value })
+      addCategory({ id:createdFactory.data.id, name: c.value, type:c.value, description:c.value })
+      showToast(`Category added — ${c.label}`, 'Selectable on the Stock Register')
+      
+    } catch (e) {
+      showToast('Category registration failed', e.message, true)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const drop = (c) => {
@@ -53,14 +80,24 @@ export default function Categories({ leaf, moduleLabel }) {
     showToast(`Removed category — ${c.name}`)
   }
 
-  const importAll = (records) => {
-    records.forEach((r) => addCategory(r))
-    showToast(`${records.length} categor${records.length === 1 ? 'y' : 'ies'} imported`, 'Selectable on the Stock Register')
-  }
-
+  
+   const importAll = (records) => importCategories(records, { factoryApi, addCategory, showToast })
+   
+   useEffect(() => {
+        let cancelled = false
+        factoryApi.listCategories()
+          .then(({ data }) => {
+            if (cancelled) return
+            // Arrow function so toStoreSupplier keeps its `this`.
+            overrideCategories((data || []).map((s) => factoryApi.toStoreCategory(s)))
+          })
+          .catch(() => { /* request failed: keep whatever is already in the store */ })
+    
+        return () => { cancelled = true }
+      }, [overrideCategories])
   const columns = [
     { key: 'name', label: 'Category', width: 200 },
-    { key: 'brand', label: 'Brand', width: 160 },
+    { key: 'type', label: 'Type', width: 160 },
     { key: 'note', label: 'Used for', width: 280 },
     { key: 'created', label: 'Added', width: 180 },
     { key: 'actions', label: '', width: 190 },
@@ -68,8 +105,8 @@ export default function Categories({ leaf, moduleLabel }) {
 
   const rows = categories.map((c) => ({
     name: c.name,
-    brand: c.brand || '—',
-    note: c.note || '—',
+    type: c.type || '—',
+    description: c.description || '—',
     created: fmtDate(new Date(c.createdAt).toISOString()),
     actions: (
       <div style={{ display: 'flex', gap: 6 }}>
@@ -94,14 +131,16 @@ export default function Categories({ leaf, moduleLabel }) {
       <Panel title="Add a category" description="Name is what users pick on the Stock Register; brand is optional and groups related categories together.">
         <FieldSet columns={3}>
           <Input label="Category name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Emulsion" error={err} />
-          <Input label="Brand" hint="Optional" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="e.g. ZifCoat" />
-          <Input label="Used for" hint="Optional" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Water-based wall paints" />
+          <Input label="Type" value={type} onChange={(e) => setType(e.target.value)} placeholder="e.g. ZifCoat" />
+          <Input label="Used for" hint="Optional" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Water-based wall paints" />
         </FieldSet>
-        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-          <Button iconLeft="plus" onClick={submit}>Add category</Button>
-          <Button variant="secondary" iconLeft="upload" onClick={() => setBulkOpen(true)}>Bulk upload</Button>
-        </div>
-
+        {loading?<Loader />
+        :
+              <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                  <Button iconLeft="plus" onClick={submit}>Add category</Button>
+                  <Button variant="secondary" iconLeft="upload" onClick={() => setBulkOpen(true)}>Bulk upload</Button>
+                </div>
+        }
         <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
           <div style={{ font: 'var(--type-eyebrow)', letterSpacing: 'var(--ls-widest)', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 10 }}>
             Default categories — click to keep
@@ -147,14 +186,16 @@ export default function Categories({ leaf, moduleLabel }) {
       </Panel>
 
       <BulkUploadDialog
-        open={bulkOpen}
-        onClose={() => setBulkOpen(false)}
-        entityLabel="category"
-        entityLabelPlural="categories"
-        fields={FIELDS}
-        existingNames={categories.map((c) => c.name)}
-        onImport={importAll}
-      />
+                    open={bulkOpen}
+                    onClose={() => setBulkOpen(false)}
+                    entityLabel="manufacturer"
+                    entityLabelPlural="manufacturers"
+                    fields={CATEGORY_BULK_FIELDS}
+                    hint={CATEGORY_BULK_HINT}
+                    validateRow={(r) => validateCategoryRow(r, categories)}
+                    existingNames={categories.map((u) => u.name)}
+                    onImport={importAll}
+                  />
 
       <EditRecordDialog
         open={!!editing}

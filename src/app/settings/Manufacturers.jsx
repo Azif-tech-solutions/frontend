@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState,useEffect } from 'react'
 import { Badge } from '../../ds/components/core/Badge.jsx'
 import { Button } from '../../ds/components/core/Button.jsx'
 import { Input } from '../../ds/components/forms/Input.jsx'
@@ -9,53 +9,155 @@ import { manufacturers as sampleManufacturers } from '../sample.js'
 import { useStore } from '../store.jsx'
 import { fmtDate } from '../utils.js'
 import { BulkUploadDialog, EditRecordDialog } from './RegisterTools.jsx'
+import FactoryApi from '../../api/FactoryApi.ts'
+import { Dropdown } from '../Dropdown.jsx'
+import { MANUFACTURER_BULK_FIELDS, MANUFACTURER_BULK_HINT, validateManufacturerRow, importManufacturers } from '../manufacturerBulk.js'
+import Loader from '../../ds/components/core/Loader.jsx'
 
 const FIELDS = [
   { key: 'name', label: 'Manufacturer name', placeholder: 'Dangote Sugar Refinery' },
   { key: 'country', label: 'Country', placeholder: 'Nigeria' },
+  { key: 'code', label: 'Code', placeholder: 'Man100' },
   { key: 'produces', label: 'What they produce', placeholder: 'Refined sugar' },
   { key: 'contact', label: 'Contact person', placeholder: 'A. Bello' },
   { key: 'phone', label: 'Phone', placeholder: '+234 …' },
   { key: 'email', label: 'Email', placeholder: 'sales@manufacturer.com' },
+  { key: 'status', label: 'Status' },
 ]
+
+const STATUS_OPTIONS = [
+  { value: 'ACTIVE', label: 'Active' },
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'SUSPENDED', label: 'Suspended' },
+]
+
+const factoryApi = new FactoryApi()
 
 /**
  * Manufacturer register. A delivery records who supplied the material and who
  * made it — the two are often different, and traceability needs both.
  */
 export default function Manufacturers({ leaf, moduleLabel, parentLabel }) {
-  const { manufacturers, addManufacturer, updateManufacturer, removeManufacturer, showToast } = useStore()
+  const { manufacturers, addManufacturer, updateManufacturer, removeManufacturer, showToast,overrideManufacturers } = useStore()
   const [bulkOpen, setBulkOpen] = useState(false)
   const [editing, setEditing] = useState(null)
 
   const [name, setName] = useState('')
+  const [code, setCode] = useState('')
   const [country, setCountry] = useState('')
   const [contact, setContact] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [produces, setProduces] = useState('')
-  const [err, setErr] = useState('')
+  const [status, setStatus] = useState('ACTIVE')
+  const [loading, setLoading] = useState(false)
+  // const [err, setErr] = useState('')
+const [errors, setErrors] = useState({})
+  
 
-  const submit = () => {
-    const clean = name.trim()
-    if (!clean) { setErr('Manufacturer name is required'); return }
-    if (manufacturers.some((m) => m.name.toLowerCase() === clean.toLowerCase())) {
-      setErr('That manufacturer is already registered'); return
-    }
-    addManufacturer({ name: clean, country, contact, phone, email, produces })
-    showToast(`Manufacturer registered — ${clean}`, produces.trim() || 'Selectable on raw material deliveries')
-    setName(''); setCountry(''); setContact(''); setPhone(''); setEmail(''); setProduces(''); setErr('')
+const submit = async () => {
+  const cleanName = name.trim()
+  const cleanCountry = country.trim()
+  const cleanProduces = produces.trim()
+  const cleanPhone = phone.trim()
+  const cleanEmail = email.trim()
+
+  const newErrors = {}
+
+  if (!cleanName) newErrors.name = 'Manufacturer name is required'
+  if (!cleanCountry) newErrors.country = 'Country is required'
+  if (!cleanProduces) newErrors.produces = 'What they produce is required'
+  if (!cleanPhone) newErrors.phone = 'Phone is required'
+  if (!cleanEmail) newErrors.email = 'Email is required'
+  if (!status) newErrors.status = 'Status is required'
+
+  // Stop submission if there are validation errors
+  if (Object.keys(newErrors).length > 0) {
+    setErrors(newErrors)
+    return
   }
+
+  // Check duplicate manufacturer name
+  if (manufacturers.some(
+    (m) => m.name.toLowerCase() === cleanName.toLowerCase()
+  )) {
+    setErrors({ name: 'That manufacturer is already registered' })
+    return
+  }
+
+  setLoading(true)
+
+  try {
+    await factoryApi.createManufacturer({
+      name: cleanName,
+      manufacturerCode: code,
+      country: cleanCountry,
+      contactEmail: cleanEmail,
+      phone: cleanPhone,
+      produces: cleanProduces,
+      status,
+    })
+
+    addManufacturer({
+      name: cleanName,
+      code,
+      country: cleanCountry,
+      contact,
+      phone: cleanPhone,
+      email: cleanEmail,
+      produces: cleanProduces,
+      status,
+    })
+
+    showToast(
+      `Manufacturer registered — ${cleanName}`,
+      cleanProduces || 'Selectable on raw material deliveries'
+    )
+
+    // Clear form
+    setName('')
+    setCode('')
+    setCountry('')
+    setContact('')
+    setPhone('')
+    setEmail('')
+    setProduces('')
+    setStatus('ACTIVE')
+    setErrors({})
+  } catch (e) {
+    showToast(
+      'Manufacturer registration failed',
+      e.message,
+      true
+    )
+  } finally {
+    setLoading(false)
+  }
+
+}
+
+    useEffect(() => {
+      
+    
+      let cancelled = false
+      factoryApi.listManufacturers()
+        .then(({ data }) => {
+          if (cancelled) return
+          overrideManufacturers((data || []).map(factoryApi.toStoreManufacturer))
+        })
+        .catch(() => {})
+    
+      return () => { cancelled = true }
+    }, [ overrideManufacturers])
 
   const drop = (m) => {
     removeManufacturer(m.id)
     showToast(`Removed manufacturer — ${m.name}`)
   }
 
-  const importAll = (records) => {
-    records.forEach((r) => addManufacturer(r))
-    showToast(`${records.length} manufacturer${records.length === 1 ? '' : 's'} imported`, 'Selectable per line on raw material deliveries')
-  }
+ const importAll = (records) => importManufacturers(records, { factoryApi, addManufacturer, showToast })
+
+
 
   const columns = [
     { key: 'name', label: 'Manufacturer', width: 220 },
@@ -101,17 +203,21 @@ export default function Manufacturers({ leaf, moduleLabel, parentLabel }) {
 
       <Panel title="Add a manufacturer" description="Name is required; everything else is for traceability and recall.">
         <FieldSet columns={3}>
-          <Input label="Manufacturer name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Dangote Sugar Refinery" error={err} />
-          <Input label="Country" hint="Optional" value={country} onChange={(e) => setCountry(e.target.value)} placeholder="e.g. Nigeria" />
-          <Input label="What they produce" hint="Optional" value={produces} onChange={(e) => setProduces(e.target.value)} placeholder="e.g. Refined sugar" />
-          <Input label="Contact person" hint="Optional" value={contact} onChange={(e) => setContact(e.target.value)} placeholder="e.g. A. Bello" />
-          <Input label="Phone" hint="Optional" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+234 …" />
-          <Input label="Email" hint="Optional" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="sales@manufacturer.com" />
+          <Input label="Manufacturer name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Dangote Sugar Refinery" error={errors.name} />
+          <Input label="Country"  value={country} onChange={(e) => setCountry(e.target.value)} placeholder="e.g. Nigeria" error={errors.country} />
+          <Input label="What they produce"  value={produces} onChange={(e) => setProduces(e.target.value)} placeholder="e.g. Refined sugar" error={errors.produces} />
+          <Input label="Contact person" hint="Optional" value={contact} onChange={(e) => setContact(e.target.value)} placeholder="e.g. A. Bello" error={errors.contact} />
+          <Input label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+234 …" error={errors.phone} />
+          <Input label="Email"  value={email} onChange={(e) => setEmail(e.target.value)} placeholder="sales@manufacturer.com" error={errors.email} /> 
+          <Dropdown label="Status" value={status} onChange={setStatus} options={STATUS_OPTIONS} />
         </FieldSet>
-        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-          <Button iconLeft="plus" onClick={submit}>Register manufacturer</Button>
+        {loading ? (
+          <Loader label="Registering manufacturer..." />
+        ) : 
+          <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+          <Button iconLeft="plus" onClick={submit} disabled={loading}>Register manufacturer</Button>
           <Button variant="secondary" iconLeft="upload" onClick={() => setBulkOpen(true)}>Bulk upload</Button>
-        </div>
+        </div>}
       </Panel>
 
       <Panel title="Registered manufacturers" padding={manufacturers.length ? 0 : 20}>
@@ -132,7 +238,9 @@ export default function Manufacturers({ leaf, moduleLabel, parentLabel }) {
         onClose={() => setBulkOpen(false)}
         entityLabel="manufacturer"
         entityLabelPlural="manufacturers"
-        fields={FIELDS}
+        fields={MANUFACTURER_BULK_FIELDS}
+        hint={MANUFACTURER_BULK_HINT}
+        validateRow={(r) => validateManufacturerRow(r, manufacturers)}
         existingNames={manufacturers.map((m) => m.name)}
         onImport={importAll}
       />

@@ -3,16 +3,19 @@ import { Button } from '../ds/components/core/Button.jsx'
 import { Input } from '../ds/components/forms/Input.jsx'
 import AuthShell from './AuthShell.jsx'
 import { useStore } from './store.jsx'
+import AuthApi from '../api/AuthApi.ts'
+
+const authApi = new AuthApi()
 
 export default function SignUp({ onSwitch }) {
-  const { signUp } = useStore()
+  const { signUp,showToast } = useStore()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [errors, setErrors] = useState({})
-
-  const submit = () => {
+  const [loading, setLoading] = useState(false)
+  const submit = async () => {
     const e = {}
     if (!name.trim()) e.name = 'Your name is required'
     if (!email.trim()) e.email = 'Email is required'
@@ -21,7 +24,23 @@ export default function SignUp({ onSwitch }) {
     if (confirm !== password) e.confirm = "Passwords don't match"
     setErrors(e)
     if (Object.keys(e).length) return
-    signUp({ name, email })
+    // signUp({ name, email })
+     setLoading(true)
+    try {
+      const data = await authApi.register({ adminDisplayName: name, adminEmail: email, password: password ,companyName:"default"})
+      
+      console.log(`register data: ${JSON.stringify(data)}`)
+      // data.  data.
+      signUp({ name, email: email, userId: data.data.userId, tenantId: data.data.activeTenantId })
+    } catch (err) {
+      // console.log('login error')
+      // console.log(err)
+      // showToast(err)
+      showToast('Registration failed', err.message, true)
+      // setErrors({ password: err.status === 401 ? 'Invalid email or dpassword' : err.message })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

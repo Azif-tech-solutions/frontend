@@ -1,10 +1,10 @@
 //store.jsx
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
-
+import { BaseApi } from '../api/config'
 // Company / branches / factories / stock data layer.
 // Persisted to localStorage so state survives a refresh. No backend yet.
 
-const KEY = 'biz_console_v1'
+export const KEY = 'biz_console_v1'
 
 // Document reference series. One running sequence per document type; a number is
 // consumed only when a document is actually posted, so a reference is never
@@ -14,8 +14,8 @@ const refLabel = (prefix, n) => `${prefix}-${String(n).padStart(4, '0')}`
 
 const emptyState = {
   loggedIn: false,
-  user: { name: '', email: '', role: 'Administrator' },
-  company: { name: '', address: '', phone: '', onboarded: false },
+  user: { name: '', email: '', role: 'Administrator',userId:'',tenantId:'' },
+  company: { name: '', address: '', phone: '',email:'',taxRegistrationNumber:'',onboarded: false },
   branches: [],
   factories: [],
   finishedFieldTemplate: [],
@@ -29,6 +29,7 @@ const emptyState = {
   refillDrafts: [],
   refills: [],
   sequences: {},
+  
 }
 
 function loadState() {
@@ -49,10 +50,19 @@ export function StoreProvider({ children }) {
   const seq = useRef(1)
   const nextId = (prefix) => `${prefix}-${Date.now().toString(36)}${(seq.current += 1).toString(36)}`
 
+  // useEffect(() => {
+  //   try { localStorage.setItem(KEY, JSON.stringify(data)) } catch { /* ignore */ }
+  // }, [data])
   useEffect(() => {
-    try { localStorage.setItem(KEY, JSON.stringify(data)) } catch { /* ignore */ }
+    try {
+      const prev = JSON.parse(localStorage.getItem(KEY) ?? '{}')
+      localStorage.setItem(KEY, JSON.stringify({
+        ...data,
+        accessToken: prev.accessToken,
+        refreshToken: prev.refreshToken,
+      }))
+    } catch { /* ignore */ }
   }, [data])
-
   // Mirrors data.sequences so a reference can be issued and returned synchronously.
   const seqRef = useRef(null)
   if (seqRef.current === null) seqRef.current = { ...REF_SEED, ...(data.sequences || {}) }
@@ -72,14 +82,21 @@ export function StoreProvider({ children }) {
   const clearToast = useCallback(() => setToast(null), [])
 
   // No real backend — password is only used for the local sign-up/sign-in gesture, never persisted.
-  const signUp = useCallback(({ name, email }) => {
-    setData((d) => ({ ...d, loggedIn: true, user: { name: (name || '').trim(), email: email.trim(), role: 'Administrator' } }))
+  const signUp = useCallback(({ name, email,userId,tenantId }) => {
+    setData((d) => ({ ...d, loggedIn: true, user: { name: (name || '').trim(), email: email.trim(), role: 'Administrator', userId, tenantId } }))
   }, [])
-  const signIn = useCallback(({ email }) => {
-    setData((d) => ({ ...d, loggedIn: true, user: { ...d.user, email: email.trim() } }))
+  const signIn = useCallback(({ email,userId,tenantId }) => {
+    setData((d) => ({ ...d, loggedIn: true, user: { ...d.user, email: email.trim(), userId, tenantId } }))
   }, [])
   const logout = useCallback(() => setData((d) => ({ ...d, loggedIn: false })), [])
 
+  useEffect(() => {
+    BaseApi.onSessionExpired = () => {
+      logout()
+      showToast('Session expired', 'Please sign in again', true)
+    }
+    return () => { BaseApi.onSessionExpired = null }
+  }, [logout, showToast])
   // Onboarding — required company fields, plus an optional first branch and
   // first factory. A factory is a prerequisite for every Factory module screen,
   // so it is offered here as well as in Settings › Factories.
@@ -92,7 +109,7 @@ export function StoreProvider({ children }) {
       }
       let factories = d.factories
       if (factory && factory.name.trim()) {
-        factories = [...factories, { id: nextId('fac'), name: factory.name.trim(), code: (factory.code || '').trim(), address: (factory.address || '').trim(), createdAt: Date.now() }]
+        factories = [...factories, { id: factory.id.trim(), name: factory.name.trim(), code: (factory.code || '').trim(), address: (factory.address || '').trim(), createdAt: Date.now() }]
       }
       // The person who created the company becomes the first user — an
       // Administrator — so every record has a real name to attribute to.
@@ -119,7 +136,7 @@ export function StoreProvider({ children }) {
    */
   const addUnit = useCallback((info) => {
     const unit = {
-      id: nextId('uom'),
+      id: info.id,
       name: (info.name || '').trim(),
       symbol: (info.symbol || '').trim(),
       note: (info.note || '').trim(),
@@ -136,6 +153,9 @@ export function StoreProvider({ children }) {
   const removeUnit = useCallback((id) => {
     setData((d) => ({ ...d, units: d.units.filter((u) => u.id !== id) }))
   }, [])
+  const overrideUnits = useCallback((units) => {
+    setData((d) => ({ ...d, units: units }))
+  }, [])
 
   /**
    * Product categories — the Type/Group every finished product and raw material
@@ -144,10 +164,10 @@ export function StoreProvider({ children }) {
    */
   const addCategory = useCallback((info) => {
     const category = {
-      id: nextId('cat'),
+      id: info.id || nextId('cat'),
       name: (info.name || '').trim(),
-      brand: (info.brand || '').trim(),
-      note: (info.note || '').trim(),
+      type: (info.type || '').trim(),
+      description: (info.description || '').trim(),
       createdAt: Date.now(),
     }
     setData((d) => ({ ...d, categories: [...d.categories, category] }))
@@ -161,11 +181,15 @@ export function StoreProvider({ children }) {
   const removeCategory = useCallback((id) => {
     setData((d) => ({ ...d, categories: d.categories.filter((c) => c.id !== id) }))
   }, [])
+   const overrideCategories = useCallback((categories) => {
+    setData((d) => ({ ...d, categories: categories }))
+  }, [])
 
   /** Supplier register — who raw materials are bought from. */
   const addSupplier = useCallback((info) => {
     const supplier = {
-      id: nextId('sup'),
+      id: info.id || nextId('sup'),
+      code: (info.code || '').trim(),
       name: (info.name || '').trim(),
       contact: (info.contact || '').trim(),
       phone: (info.phone || '').trim(),
@@ -179,6 +203,10 @@ export function StoreProvider({ children }) {
     return supplier
   }, [])
 
+   const overrideSuppliers = useCallback((suppliers) => {
+    setData((d) => ({ ...d, suppliers: suppliers }))
+  }, [])
+
   const updateSupplier = useCallback((id, patch) => {
     setData((d) => ({ ...d, suppliers: d.suppliers.map((x) => (x.id === id ? { ...x, ...patch } : x)) }))
   }, [])
@@ -190,7 +218,7 @@ export function StoreProvider({ children }) {
   /** Manufacturer register — who actually produced a received material. */
   const addManufacturer = useCallback((info) => {
     const manufacturer = {
-      id: nextId('mfr'),
+      id: info.id,
       name: (info.name || '').trim(),
       country: (info.country || '').trim(),
       contact: (info.contact || '').trim(),
@@ -210,6 +238,11 @@ export function StoreProvider({ children }) {
   const removeManufacturer = useCallback((id) => {
     setData((d) => ({ ...d, manufacturers: d.manufacturers.filter((x) => x.id !== id) }))
   }, [])
+
+     const overrideManufacturers = useCallback((manufacturers) => {
+    setData((d) => ({ ...d, manufacturers: manufacturers }))
+  }, [])
+
 
   /** Menu › User Register — the people who can sign in to this company. */
   const addUser = useCallback((info) => {
@@ -275,14 +308,15 @@ export function StoreProvider({ children }) {
   const addFactory = useCallback((input) => {
     const info = typeof input === 'string' ? { name: input } : (input || {})
     const factory = {
-      id: nextId('fac'),
-      name: (info.name || '').trim(),
-      code: (info.code || '').trim(),
-      address: (info.address || '').trim(),
+      ...info,
       createdAt: Date.now(),
     }
     setData((d) => ({ ...d, factories: [...d.factories, factory] }))
     return factory
+  }, [])
+
+  const overrideFactories = useCallback((factories) => {
+    setData((d) => ({ ...d, factories: factories }))
   }, [])
 
   const updateFactory = useCallback((id, patch) => {
@@ -360,8 +394,9 @@ export function StoreProvider({ children }) {
   const value = {
     ...data,
     toast, showToast, clearToast,
-    peekRef, issueRef,
-    signUp, signIn, logout,
+    peekRef, issueRef, overrideCategories,
+    signUp, signIn, logout,overrideUnits,
+    overrideFactories,overrideSuppliers,overrideManufacturers,
     completeOnboarding, updateCompany, addUnit, updateUnit, removeUnit, addCategory, updateCategory, removeCategory, addSupplier, updateSupplier, removeSupplier, addManufacturer, updateManufacturer, removeManufacturer, addUser, setUserStatus, saveDraft, deleteDraft, postRefill, addBranch, addFactory, updateFactory, removeFactory, addTemplateField, removeTemplateField, addProduct, registerProduct, commitStockEntries,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

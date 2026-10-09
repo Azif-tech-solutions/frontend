@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback,useEffect } from 'react'
 import { Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { useStore } from './app/store.jsx'
 import { IconButton } from './ds/components/core/IconButton.jsx'
@@ -12,12 +12,16 @@ import { screens } from './app/screens'
 import { navById, moduleById, parentLabelById } from './app/nav'
 import { NavProvider } from './app/navContext.jsx'
 import { initials } from './app/utils.js'
-
+import Loader from './ds/components/core/Loader.jsx'
+import AuthApi from './api/AuthApi.js'
+import FactoryApi from './api/FactoryApi.js'
 // location.state is structured-cloned by the History API; a function or React
 // element inside a target would throw. Strip to plain data.
 const toPlain = (v) => {
   try { return JSON.parse(JSON.stringify(v)) } catch { return null }
 }
+const authApi=new AuthApi()
+const factoryApi=new FactoryApi()
 
 /** URL → the same three values the old useState calls held. */
 function resolveRoute(pathname, state) {
@@ -42,14 +46,63 @@ function resolveRoute(pathname, state) {
 }
 
 export default function App() {
-  const { loggedIn, company } = useStore()
+  const { loggedIn, company,updateCompany,overrideFactories } = useStore()
+  const [profileChecked, setProfileChecked] = useState(false)
+
   const routerNavigate = useNavigate()
   const { pathname, state } = useLocation()
   const [navOpen, setNavOpen] = useState(false)
-  console.log(`pathname: ${pathname}`)
-  console.log(`state: ${JSON.stringify(state)}`)
-  console.log(`Company: ${JSON.stringify(company)}`)
+  // console.log(`pathname: ${pathname}`)
+  // console.log(`state: ${JSON.stringify(state)}`)
+  // console.log(`Company: ${JSON.stringify(company)}`)
   // Same signature and semantics as before.
+const [profileRetrieved, setProfileRetrieved] = useState(false) // new
+
+// Company profile (your existing effect, with two changes marked)
+useEffect(() => {
+  if (!loggedIn) {
+    setProfileChecked(false)
+    setProfileRetrieved(false) // change 1: reset on logout
+    return
+  }
+  if (company.onboarded) return
+
+  let cancelled = false
+  authApi.RetrieveCompanyProfile()
+    .then(({ data }) => {
+      if (cancelled || !data) return
+      if (data.companyName && data.headOfficeAddress) {
+        updateCompany({
+          name: data.companyName,
+          address: data.headOfficeAddress,
+          phone: data.primaryPhone || '',
+          email: data.primaryEmail || '',
+          taxRegistrationNumber: data.taxRegistrationNumber || '',
+          onboarded: true,
+        })
+        setProfileRetrieved(true) // change 2: the profile came back
+      }
+    })
+    .catch(() => {})
+    .finally(() => { if (!cancelled) setProfileChecked(true) })
+
+  return () => { cancelled = true }
+}, [loggedIn, company.onboarded, updateCompany])
+
+// Factories: runs only after the company profile was retrieved
+useEffect(() => {
+  if (!loggedIn || !profileRetrieved) return
+
+  let cancelled = false
+  factoryApi.listFactories()
+    .then(({ data }) => {
+      if (cancelled) return
+      overrideFactories((data || []).map(factoryApi.toStoreFactory))
+    })
+    .catch(() => {})
+
+  return () => { cancelled = true }
+}, [loggedIn, profileRetrieved, overrideFactories])
   const navigate = useCallback((target) => {
   const id = target.id ?? 'overview'
   const inNav = !!navById[id]
@@ -73,10 +126,15 @@ export default function App() {
     if (pathname === '/signup') return <><SignUp onSwitch={() => routerNavigate('/signin')} /><Toast /></>
     return <Navigate to="/signin" replace />
   }
-  if (pathname === '/signin' || pathname === '/signup') return <Navigate to="/" replace />
 
-  // Onboarding gate stays state-driven and keeps whatever URL the user is on.
+  if (pathname === '/signin' || pathname === '/signup') return <Navigate to="/" replace />
+  // Before the onboarding gate:
+  if (!company.onboarded && !profileChecked) return <Loader overlay label="Loading your company…" />
+
+  // Existing line, unchanged:
   if (!company.onboarded) return <><Onboarding /><Toast /></>
+  // Onboarding gate stays state-driven and keeps whatever URL the user is on.
+  // if (!company.onboarded) return <><Onboarding /><Toast /></>
 
   const route = resolveRoute(pathname, state)
   if (!route) return <Navigate to="/" replace />

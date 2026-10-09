@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Badge } from '../../ds/components/core/Badge.jsx'
 import { Button } from '../../ds/components/core/Button.jsx'
 import { Input } from '../../ds/components/forms/Input.jsx'
@@ -9,54 +9,77 @@ import { units as sampleUnits } from '../sample.js'
 import { useStore } from '../store.jsx'
 import { fmtDate } from '../utils.js'
 import { BulkUploadDialog, EditRecordDialog } from './RegisterTools.jsx'
+import FactoryApi from '../../api/FactoryApi.js'
+import { UNIT_BULK_FIELDS, UNIT_BULK_HINT, validateUnitRow, importUnits } from '../unitBulk.js'
 
+import Loader from '../../ds/components/core/Loader.jsx'
 const FIELDS = [
   { key: 'name', label: 'Unit name', placeholder: 'Kilograms' },
   { key: 'symbol', label: 'Symbol', placeholder: 'kg' },
-  { key: 'note', label: 'Used for', placeholder: 'Dry raw materials' },
+  { key: 'code', label: 'Code', placeholder: '...' },
 ]
+
+const factoryApi=new FactoryApi()
 
 /** Suggestions — one click each, so the common set doesn't have to be typed out. */
 const COMMON = [
-  { name: 'Pieces', symbol: 'pcs' },
-  { name: 'Cartons', symbol: 'ctn' },
-  { name: 'Kilograms', symbol: 'kg' },
-  { name: 'Grams', symbol: 'g' },
-  { name: 'Litres', symbol: 'L' },
-  { name: 'Millilitres', symbol: 'ml' },
-  { name: 'Bags', symbol: 'bag' },
-  { name: 'Drums', symbol: 'drum' },
-  { name: 'Rolls', symbol: 'roll' },
-  { name: 'Metres', symbol: 'm' },
-  { name: 'Packs', symbol: 'pack' },
-  { name: 'Tonnes', symbol: 't' },
+  { name: 'Pieces', symbol: 'pcs', code: 'pcs' },
+  { name: 'Cartons', symbol: 'ctn', code: 'ctn' },
+  { name: 'Kilograms', symbol: 'kg', code: 'kg' },
+  { name: 'Grams', symbol: 'g', code: 'g' },
+  { name: 'Litres', symbol: 'L', code: 'L' },
+  { name: 'Millilitres', symbol: 'ml', code: 'ml' },
+  { name: 'Bags', symbol: 'bag', code: 'bag' },
+  { name: 'Drums', symbol: 'drum', code: 'drum' },
+  { name: 'Rolls', symbol: 'roll', code: 'roll' },
+  { name: 'Metres', symbol: 'm', code: 'm' },
+  { name: 'Packs', symbol: 'pack', code: 'pack' },
+  { name: 'Tonnes', symbol: 't', code: 't' },
 ]
 
 export default function Units({ leaf, moduleLabel }) {
-  const { units, addUnit, updateUnit, removeUnit, showToast } = useStore()
+  const { units, addUnit, updateUnit, removeUnit, showToast,overrideUnits } = useStore()
 
   const [name, setName] = useState('')
   const [symbol, setSymbol] = useState('')
-  const [note, setNote] = useState('')
+  const [code, setCode] = useState('')
   const [err, setErr] = useState('')
   const [bulkOpen, setBulkOpen] = useState(false)
   const [editing, setEditing] = useState(null)
+  const [loading, setLoading] = useState(false)
 
   const exists = (n) => units.some((u) => u.name.toLowerCase() === n.trim().toLowerCase())
 
-  const submit = () => {
+  const submit = async() => {
     const clean = name.trim()
+    
     if (!clean) { setErr('Unit name is required'); return }
     if (exists(clean)) { setErr('That unit is already defined'); return }
-    addUnit({ name: clean, symbol, note })
-    showToast(`Unit added — ${clean}${symbol.trim() ? ` (${symbol.trim()})` : ''}`, 'Selectable wherever a quantity is entered')
-    setName(''); setSymbol(''); setNote(''); setErr('')
+    setLoading(true)
+    try {
+      let createdUnit= await factoryApi.createUnit({unitCode:code,unitName:clean,symbol:symbol})
+      addUnit({name:clean,symbol,code,id:createdUnit.data.id})
+      showToast(`Unit added — ${clean}${symbol.trim() ? ` (${symbol.trim()})` : ''}`, 'Selectable wherever a quantity is entered')
+      setName(''); setSymbol(''); setCode(''); setErr('')
+    } catch (e) {
+      setLoading(false)
+      showToast(`Unit ${clean} (${symbol.trim() ? ` (${symbol.trim()})` : ''}) failed to add`, e.message, true)
+    }
+    setLoading(false)
   }
 
-  const quickAdd = (u) => {
+  const quickAdd = async(u) => {
     if (exists(u.name)) return
-    addUnit(u)
-    showToast(`Unit added — ${u.name} (${u.symbol})`, 'Selectable wherever a quantity is entered')
+
+    try {
+      let createdUnit=await factoryApi.createUnit({unitCode:u.code,unitName:u.name,symbol:u.symbol})
+    
+      addUnit({...u,id:createdUnit.data.id})
+      
+      showToast(`Unit added — ${u.name} (${u.symbol})`, 'Selectable wherever a quantity is entered')
+    } catch (e) {
+      showToast(`Unit ${u.name} (${u.symbol}) failed to add`, e.message, true)
+    }
   }
 
   const drop = (u) => {
@@ -64,15 +87,14 @@ export default function Units({ leaf, moduleLabel }) {
     showToast(`Removed unit — ${u.name}`)
   }
 
-  const importAll = (records) => {
-    records.forEach((r) => addUnit(r))
-    showToast(`${records.length} unit${records.length === 1 ? '' : 's'} imported`, 'Selectable wherever a quantity is entered')
-  }
+ const importAll = (records) => importUnits(records, { factoryApi, addUnit, showToast })
+
+
 
   const columns = [
     { key: 'name', label: 'Unit', width: 200 },
     { key: 'symbol', label: 'Symbol', width: 130 },
-    { key: 'note', label: 'Used for', width: 280 },
+    { key: 'code', label: 'Code', width: 280 },
     { key: 'created', label: 'Added', width: 180 },
     { key: 'actions', label: '', width: 190 },
   ]
@@ -80,7 +102,7 @@ export default function Units({ leaf, moduleLabel }) {
   const rows = units.map((u) => ({
     name: u.name,
     symbol: u.symbol || '—',
-    note: u.note || '—',
+    code: u.code || '—',  
     created: fmtDate(new Date(u.createdAt).toISOString()),
     actions: (
       <div style={{ display: 'flex', gap: 6 }}>
@@ -90,6 +112,19 @@ export default function Units({ leaf, moduleLabel }) {
     ),
   })).reverse()
 
+   useEffect(() => {
+      let cancelled = false
+      factoryApi.listUnits()
+        .then(({ data }) => {
+          if (cancelled) return
+          // Arrow function so toStoreSupplier keeps its `this`.
+          overrideUnits((data || []).map((s) => factoryApi.toStoreUnit(s)))
+        })
+        .catch(() => { /* request failed: keep whatever is already in the store */ })
+  
+      return () => { cancelled = true }
+    }, [overrideUnits])
+  
   return (
     <Page wide>
       <PageHeader
@@ -110,13 +145,17 @@ export default function Units({ leaf, moduleLabel }) {
       <Panel title="Add a unit" description="Name is what users pick; the symbol is what prints on documents.">
         <FieldSet columns={3}>
           <Input label="Unit name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Kilograms" error={err} />
-          <Input label="Symbol" hint="Optional" value={symbol} onChange={(e) => setSymbol(e.target.value)} placeholder="e.g. kg" />
-          <Input label="Used for" hint="Optional" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Dry raw materials" />
+          <Input label="Symbol" value={symbol} onChange={(e) => setSymbol(e.target.value)} placeholder="e.g. kg" />
+          <Input label="Code"  value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g...." />
         </FieldSet>
-        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+        {loading ?
+        <Loader label="Adding unit..." />
+        
+      : <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
           <Button iconLeft="plus" onClick={submit}>Add unit</Button>
           <Button variant="secondary" iconLeft="upload" onClick={() => setBulkOpen(true)}>Bulk upload</Button>
-        </div>
+        </div>}
+        
 
         <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
           <div style={{ font: 'var(--type-eyebrow)', letterSpacing: 'var(--ls-widest)', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 10 }}>
@@ -163,14 +202,17 @@ export default function Units({ leaf, moduleLabel }) {
       </Panel>
 
       <BulkUploadDialog
-        open={bulkOpen}
-        onClose={() => setBulkOpen(false)}
-        entityLabel="unit"
-        entityLabelPlural="units"
-        fields={FIELDS}
-        existingNames={units.map((u) => u.name)}
-        onImport={importAll}
-      />
+              open={bulkOpen}
+              onClose={() => setBulkOpen(false)}
+              entityLabel="manufacturer"
+              entityLabelPlural="manufacturers"
+              fields={UNIT_BULK_FIELDS}
+              hint={UNIT_BULK_HINT}
+              validateRow={(r) => validateUnitRow(r, units)}
+              existingNames={units.map((u) => u.name)}
+              onImport={importAll}
+            />
+      
 
       <EditRecordDialog
         open={!!editing}
