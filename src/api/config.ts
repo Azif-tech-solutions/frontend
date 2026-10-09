@@ -5,7 +5,8 @@ import { KEY } from "../app/store";
 
 
 export function getBaseUrl():{backendBaseUrl:string,frontendBaseUrl:string} {
-    const BACKEND_BASE_URL:string="http://16.192.105.205:8080/api"
+    // const BACKEND_BASE_URL:string="http://16.192.105.205:8080/api"
+    const BACKEND_BASE_URL:string="https://d3t9f2p14df2uo.cloudfront.net/api"
     const FRONTEND_BASE_URL:string="http://localhost:3001/api"
     return {backendBaseUrl:BACKEND_BASE_URL,frontendBaseUrl:FRONTEND_BASE_URL}
 }
