@@ -49,28 +49,3 @@ export interface FullRegistrationResponseData  {
 
 
 export type RefreshResponse = LoginResponse;
-
-export interface UpdateCompanyCredentials {
-  companyName: string;
-  primaryEmail: string;
-  primaryPhone:string,
-  taxRegistrationNumber:string,
-  headOfficeAddress:string
-}
-
-export interface UpdateCompanyResponse {
-  tenantId: string;
-  companyName: string;  
-  primaryEmail: string;
-  primaryPhone: string;
-  taxRegistrationNumber: string;
-  headOfficeAddress: string;
-}
-
-export interface FullUpdateCompanyResponseData {
-  data: UpdateCompanyResponse;
-}
-
-export interface FullGetCompanyProfile{
- data:UpdateCompanyResponse;
-}

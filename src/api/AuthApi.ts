@@ -3,7 +3,7 @@
 import { getBaseUrl } from "./config.ts";
 import { BaseApi } from "./config.ts";
 import { LoginCredentials, LoginResponse,RegistrationCredentials,FullRegistrationResponseData } from "./types/AuthTypes.ts";
-import { UpdateCompanyCredentials,FullUpdateCompanyResponseData,FullGetCompanyProfile } from "./types/AuthTypes.ts";
+
 /** Auth-related endpoints. Only the endpoint-specific logic lives here. */
 export default class AuthApi extends BaseApi {
   constructor() {
@@ -33,23 +33,5 @@ export default class AuthApi extends BaseApi {
     this.storeTokens(data.data.tokenResponse.accessToken, data.data.tokenResponse.refreshToken);
     return data;
   }
-  async updateCompany(credentials: UpdateCompanyCredentials) {
-    const data= await this.request<FullUpdateCompanyResponseData>("company", {
-      method: "PUT",
-      body: credentials,
-      resource: "settings", // this call goes to /v1/settings/company
-      auth: true,
-    });
-    console.log("Data gotten from update company: ", data)
-    return data
-  }
-  async RetrieveCompanyProfile() {
-    const data= await this.request<FullGetCompanyProfile>("company", {
-      method: "GET",
-      resource: "settings", // this call goes to /v1/settings/company
-      auth: true,
-    });
-    console.log("Data gotten from RetrieveCompanyProfile: ", data)
-    return data
-  }
+  
 }

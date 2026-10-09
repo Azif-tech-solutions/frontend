@@ -12,11 +12,17 @@ import { BulkUploadDialog, EditRecordDialog } from './RegisterTools.jsx'
 import FactoryApi from '../../api/FactoryApi.js'
 import Loader from '../../ds/components/core/Loader.jsx'
 import { CATEGORY_BULK_FIELDS, CATEGORY_BULK_HINT, validateCategoryRow, importCategories } from '../categoryBulk.js'
-
+import { Dropdown } from '../Dropdown.jsx'
 const FIELDS = [
   { key: 'name', label: 'Category name', placeholder: 'Emulsion' },
   { key: 'type', label: 'Type', placeholder: 'ZifCoat' },
-  { key: 'note', label: 'Used for', placeholder: 'Water-based wall paints' },
+  { key: 'description', label: 'Description', placeholder: 'Water-based wall paints' },
+]
+
+const TYPE_OPTIONS = [
+  { value: 'FINISHED_PRODUCT', label: 'Finished product' },
+  { value: 'RAW_MATERIAL', label: 'Raw material' },
+  { value: 'PACKAGING', label: 'Packaging' },
 ]
 
 const factoryApi = new FactoryApi()
@@ -30,6 +36,7 @@ export default function Categories({ leaf, moduleLabel }) {
 
   const [name, setName] = useState('')
   const [type, setType] = useState('')
+  const [typeErr, setTypeErr] = useState('')
   const [description, setDescription] = useState('')
   const [err, setErr] = useState('')
   const [bulkOpen, setBulkOpen] = useState(false)
@@ -42,12 +49,16 @@ export default function Categories({ leaf, moduleLabel }) {
     const clean = name.trim()
     if (!clean) { setErr('Category name is required'); return }
     if (exists(clean)) { setErr('That category is already defined'); return }
+    if (!clean) { setErr('Category name is required'); return }
+    if (exists(clean)) { setErr('That category is already defined'); return }
+    setErr('') // name is fine now, so clear any old name error
+    if (!type) { setTypeErr('Select a type'); return }
     setLoading(true)
     try {
       let createdFactory=await factoryApi.createCategory({ name: clean, type, description })
       addCategory({ id:createdFactory.data.id, name: clean, type, description })
       showToast(`Category added — ${clean}${type.trim() ? ` (${type.trim()})` : ''}`, 'Selectable on the Stock Register')
-      setName(''); setType(''); setDescription(''); setErr('')
+      setName(''); setType(''); setDescription(''); setErr(''); setTypeErr('')
       // overrideCategories()
     } catch (e) {
       showToast('Category registration failed', e.message, true)
@@ -98,7 +109,7 @@ export default function Categories({ leaf, moduleLabel }) {
   const columns = [
     { key: 'name', label: 'Category', width: 200 },
     { key: 'type', label: 'Type', width: 160 },
-    { key: 'note', label: 'Used for', width: 280 },
+    { key: 'description', label: 'Description', width: 280 },
     { key: 'created', label: 'Added', width: 180 },
     { key: 'actions', label: '', width: 190 },
   ]
@@ -131,7 +142,15 @@ export default function Categories({ leaf, moduleLabel }) {
       <Panel title="Add a category" description="Name is what users pick on the Stock Register; brand is optional and groups related categories together.">
         <FieldSet columns={3}>
           <Input label="Category name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Emulsion" error={err} />
-          <Input label="Type" value={type} onChange={(e) => setType(e.target.value)} placeholder="e.g. ZifCoat" />
+          {/* <Input label="Type" value={type} onChange={(e) => setType(e.target.value)} placeholder="e.g. ZifCoat" />
+           */}
+           <div>
+  <Dropdown
+    label="Type" value={type} options={TYPE_OPTIONS} placeholder="Select type"
+    onChange={(v) => { setType(v); setTypeErr('') }}
+  />
+  {typeErr && <div style={{ font: 'var(--type-caption)', color: 'var(--text-danger, #b42318)', marginTop: 6 }}>{typeErr}</div>}
+</div>
           <Input label="Used for" hint="Optional" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Water-based wall paints" />
         </FieldSet>
         {loading?<Loader />

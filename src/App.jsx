@@ -15,14 +15,17 @@ import { initials } from './app/utils.js'
 import Loader from './ds/components/core/Loader.jsx'
 import AuthApi from './api/AuthApi.js'
 import FactoryApi from './api/FactoryApi.js'
+import SettingsApi from './api/SettingsApi.js'
+// import SettingsApi from './api/SettingsApi.js'
 // location.state is structured-cloned by the History API; a function or React
 // element inside a target would throw. Strip to plain data.
+
 const toPlain = (v) => {
   try { return JSON.parse(JSON.stringify(v)) } catch { return null }
 }
 const authApi=new AuthApi()
 const factoryApi=new FactoryApi()
-
+const settingsApi=new SettingsApi()
 /** URL → the same three values the old useState calls held. */
 function resolveRoute(pathname, state) {
   const params = state?.params || {}
@@ -62,29 +65,39 @@ const [profileRetrieved, setProfileRetrieved] = useState(false) // new
 useEffect(() => {
   if (!loggedIn) {
     setProfileChecked(false)
-    setProfileRetrieved(false) // change 1: reset on logout
+    setProfileRetrieved(false)
     return
   }
   if (company.onboarded) return
 
   let cancelled = false
-  authApi.RetrieveCompanyProfile()
-    .then(({ data }) => {
+
+  ;(async () => {
+    try {
+      // 1. Ask the backend whether the company details were ever submitted.
+      const { data: status } = await settingsApi.getOnboardingStatus()
+      const companyDone =
+        status?.steps?.find((s) => s.key === 'COMPANY')?.done ?? status?.completed
+
+      // Not done: the profile is just the blank placeholder, so show onboarding.
+      if (cancelled || !companyDone) return
+
+      // 2. Done: load the real profile into the store and skip onboarding.
+      const { data } = await settingsApi.RetrieveCompanyProfile()
       if (cancelled || !data) return
-      if (data.companyName && data.headOfficeAddress) {
-        updateCompany({
-          name: data.companyName,
-          address: data.headOfficeAddress,
-          phone: data.primaryPhone || '',
-          email: data.primaryEmail || '',
-          taxRegistrationNumber: data.taxRegistrationNumber || '',
-          onboarded: true,
-        })
-        setProfileRetrieved(true) // change 2: the profile came back
-      }
-    })
-    .catch(() => {})
-    .finally(() => { if (!cancelled) setProfileChecked(true) })
+      console.log("Company profile:", data)
+      updateCompany({
+        ...data,
+        name:data.legalName || '',
+        onboarded: true,
+      })
+      setProfileRetrieved(true) // lets the factories effect run
+    } catch {
+      // Request failed: fall through to onboarding.
+    } finally {
+      if (!cancelled) setProfileChecked(true)
+    }
+  })()
 
   return () => { cancelled = true }
 }, [loggedIn, company.onboarded, updateCompany])
