@@ -102,7 +102,7 @@ export default function Categories({ leaf, moduleLabel }) {
             // Arrow function so toStoreSupplier keeps its `this`.
             overrideCategories((data || []).map((s) => factoryApi.toStoreCategory(s)))
           })
-          .catch(() => { /* request failed: keep whatever is already in the store */ })
+          .catch(() => { /* request failed: keep whatever is already in ddthe store */ })
     
         return () => { cancelled = true }
       }, [overrideCategories])
