@@ -185,6 +185,27 @@ export function StoreProvider({ children }) {
     setData((d) => ({ ...d, categories: categories }))
   }, [])
 
+  const overrideProducts = useCallback((products) => {
+    setData((d) => ({ ...d, products: products }))
+  }, [])
+const upsertProduct = useCallback((product) => {
+  setData((d) => ({
+    ...d,
+    products: d.products.some((p) => p.id === product.id)
+      ? d.products.map((p) => (p.id === product.id ? { ...p, ...product } : p))
+      : [...d.products, product],
+  }))
+}, [])
+
+const mergeProducts = useCallback(({ factoryIds, kinds }, incoming) => {
+  setData((d) => ({
+    ...d,
+    products: [
+      ...d.products.filter((p) => !(factoryIds.includes(p.factoryId) && kinds.includes(p.kind))),
+      ...incoming,
+    ],
+  }))
+}, [])
   /** Supplier register — who raw materials are bought from. */
   const addSupplier = useCallback((info) => {
     const supplier = {
@@ -396,6 +417,8 @@ export function StoreProvider({ children }) {
     toast, showToast, clearToast,
     peekRef, issueRef, overrideCategories,
     signUp, signIn, logout,overrideUnits,
+    overrideProducts,
+    upsertProduct,mergeProducts,
     overrideFactories,overrideSuppliers,overrideManufacturers,
     completeOnboarding, updateCompany, addUnit, updateUnit, removeUnit, addCategory, updateCategory, removeCategory, addSupplier, updateSupplier, removeSupplier, addManufacturer, updateManufacturer, removeManufacturer, addUser, setUserStatus, saveDraft, deleteDraft, postRefill, addBranch, addFactory, updateFactory, removeFactory, addTemplateField, removeTemplateField, addProduct, registerProduct, commitStockEntries,
   }

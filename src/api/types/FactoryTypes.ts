@@ -98,3 +98,5 @@ export interface CreateCategoryResponse{
 export interface ListCategoryResponse{
   data:CreateCategoryCredentials[];
 }
+
+

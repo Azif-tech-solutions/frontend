@@ -2,6 +2,7 @@ import { Button } from '../../ds/components/core/Button.jsx'
 import { Icon } from '../../ds/components/core/Icon.jsx'
 import { PageHeader } from './PageHeader.jsx'
 import { Page } from './Page.jsx'
+import Loader from '../../ds/components/core/Loader.jsx'
 
 /**
  * The archetype behind every entry screen (Stock Refill, Register, Adjustment, Transfer…):
@@ -9,7 +10,7 @@ import { Page } from './Page.jsx'
  */
 export function FormShell({
   crumbs, title, description, icon, headerActions,
-  aside, children, submitLabel = 'Submit', onSubmit, onCancel, secondaryAction,
+  aside, children, loading=false, submitLabel = 'Submit', onSubmit, onCancel, secondaryAction,
   note, wide,
 }) {
   return (
@@ -35,7 +36,8 @@ export function FormShell({
         {!note && <div style={{ flex: 1 }} />}
         {onCancel && <Button variant="ghost" onClick={onCancel}>Cancel</Button>}
         {secondaryAction}
-        <Button iconLeft="check" onClick={onSubmit}>{submitLabel}</Button>
+        {loading && <Loader />}
+        {!loading && <Button iconLeft="check" onClick={onSubmit}>{submitLabel}</Button>}
       </div>
     </Page>
   )
