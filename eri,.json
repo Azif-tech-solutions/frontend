@@ -1,0 +1,64 @@
+// Stock Transfer
+
+//ensure that the print /download way bill uses the waybill url
+
+{
+    "data": {
+        "id": "2f9b3bc3-b420-481f-90e6-522d6347310c",
+        "waybillRef": "WB-1",
+        "sourceLocationId": "a380c874-a2c4-45af-92e3-fa6452fd3532",
+        "sourceLocationName": "RIdgeway Factory2.0",
+        "sourceLocationType": "FACTORY",
+        "destinationLocationId": "bcd3d4fa-3f26-4e48-98e1-96ba08cba3d7",
+        "destinationLocationName": "Ogun Paint Works",
+        "destinationLocationType": "FACTORY",
+        "status": "DISPATCHED",
+        "driverId": "b82b630b-2293-472d-95fa-b0da77b0186b",
+        "driverName": "Remi",
+        "driverVehicle": "REMI-S131",
+        "transferDate": "2026-10-11",
+        "dispatchedAt": "2026-10-13T18:14:34.105706Z",
+        "receivedDate": null,
+        "receivedAt": null,
+        "receiptNote": null,
+        "totalSent": 51.000,
+        "totalRejected": 0,
+        "waybillUrl": "/api/v1/inventory/stock/transfers/2f9b3bc3-b420-481f-90e6-522d6347310c/waybill.pdf",
+        "lines": [
+            {
+                "id": "b6b33188-3fd0-4956-ad93-e9eefa80db01",
+                "stockItemId": "ccee9d48-ce9e-4d6a-92f6-d5028d3579f9",
+                "stockItemCode": "ZF-5005",
+                "stockItemName": "lemonade mouth",
+                "unit": "KILOGRAMS",
+                "qtySent": 21.000,
+                "qtyReceived": null,
+                "qtyRejected": null,
+                "outstanding": 21.000,
+                "fromLocationId": null,
+                "fromLocationName": null,
+                "receivedIntoLocationId": null,
+                "receivedIntoLocationName": null,
+                "batchNo": "b-311",
+                "rejectionNote": null
+            },
+            {
+                "id": "e52a7ffa-f326-4842-bcc9-34b3a46c86b4",
+                "stockItemId": "8555e491-82e1-4456-ab46-afd745998a71",
+                "stockItemCode": "ZF-250121322",
+                "stockItemName": "cOCA COLA 2.0",
+                "unit": "KILOGRAMS",
+                "qtySent": 30.000,
+                "qtyReceived": null,
+                "qtyRejected": null,
+                "outstanding": 30.000,
+                "fromLocationId": null,
+                "fromLocationName": null,
+                "receivedIntoLocationId": null,
+                "receivedIntoLocationName": null,
+                "batchNo": "B-330",
+                "rejectionNote": null
+            }
+        ]
+    }
+}
