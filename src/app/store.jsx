@@ -309,7 +309,7 @@ const mergeProducts = useCallback(({ factoryIds, kinds }, incoming) => {
    * refill screens (and, later, movement reports) read from here.
    */
   const postRefill = useCallback((kind, info) => {
-    const record = { id: nextId('rfl'), kind, ...info, at: Date.now() }
+    const record = { kind, ...info, at: Date.now() }
     setData((d) => ({ ...d, refills: [record, ...d.refills] }))
     return record
   }, [])

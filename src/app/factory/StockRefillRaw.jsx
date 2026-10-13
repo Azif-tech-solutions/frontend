@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Badge } from '../../ds/components/core/Badge.jsx'
 import { Icon } from '../../ds/components/core/Icon.jsx'
 import { Button } from '../../ds/components/core/Button.jsx'
@@ -8,47 +8,93 @@ import { Select } from '../../ds/components/forms/Select.jsx'
 import { FormShell } from '../shells/FormShell.jsx'
 import { Panel, FieldSet, MetaRow } from '../shells/Page.jsx'
 import { LineItems } from '../shells/LineItems.jsx'
-import { factories, rawMaterials, suppliers as sampleSuppliers, manufacturers as sampleManufacturers, recentDeliveries } from '../sample.js'
 import { unitOptions } from '../unitOptions.js'
+import { categoryOptions } from '../categoryOptions.js'
 import { useStore } from '../store.jsx'
 import { fmtDate } from '../utils.js'
+import InventoryApi from '../../api/InventoryApi.js'
 
-const makeColumns = (unitList, manufacturerList) => [
-  { key: 'material', label: 'Raw material / recipe', type: 'select', options: rawMaterials, width: 240, placeholder: 'Select material…' },
-  { key: 'qty', label: 'Qty arrived', type: 'number', width: 130, placeholder: '0' },
-  { key: 'unit', label: 'Unit', type: 'select', options: unitList, width: 130, placeholder: 'Unit…' },
-  { key: 'manufacturer', label: 'Manufacturer', type: 'select', options: manufacturerList, width: 210, placeholder: 'Select…' },
-  { key: 'mfgDate', label: 'Manufactured', type: 'date', width: 160 },
-  { key: 'expiry', label: 'Expiry date', type: 'date', width: 160 },
-  { key: 'unitCost', label: 'Unit cost (₦)', type: 'number', width: 150, placeholder: '0.00' },
-  { key: 'lineTotal', label: 'Line total (₦)', type: 'static', align: 'right', width: 150 },
-]
+const inventoryApi = new InventoryApi()
 
-const blank = () => ({ id: Math.random().toString(36).slice(2), material: '', qty: '', unit: '', manufacturer: '', mfgDate: '', expiry: '', unitCost: '' })
+const blank = () => ({ id: Math.random().toString(36).slice(2), material: '', qty: '', manufacturer: '', mfgDate: '', expiry: '', unitCost: '' })
 
 export default function StockRefillRaw({ leaf, moduleLabel, parentLabel, onNavigate, draftId }) {
-  const { peekRef, issueRef, showToast, user, suppliers: ownSuppliers, manufacturers: ownManufacturers, units, refills, postRefill, refillDrafts, saveDraft, deleteDraft } = useStore()
-  // Registered manufacturers take precedence; the sample list is the fallback.
-  const manufacturerOptions = ownManufacturers.length
-    ? ownManufacturers.map((m) => ({ value: m.id, label: m.name }))
-    : sampleManufacturers
-  const columns = makeColumns(unitOptions(units), manufacturerOptions)
-  // Registered suppliers take precedence; the sample list is the fallback.
-  const supplierOptions = ownSuppliers.length
-    ? ownSuppliers.map((s) => ({ value: s.id, label: s.name }))
-    : sampleSuppliers
+  const {
+    showToast, user, company, units, categories, factories,
+    suppliers, manufacturers,
+    refills, postRefill, refillDrafts, saveDraft, deleteDraft,
+  } = useStore()
+  const recentDeliveries = []
+
+  // Opened from Saved Drafts: start on the factory / supplier / manufacturer the draft was saved against.
+  const openedDraft = draftId && refillDrafts.find((d) => d.id === draftId)
+  const [factoryId, setFactoryId] = useState(() => openedDraft?.factoryId || '')
+  const [supplierId, setSupplierId] = useState(() => openedDraft?.supplierId || '')
+  const [manufacturerId, setManufacturerId] = useState(() => openedDraft?.manufacturerId || '')
+  const [items, setItems] = useState([]) // this factory's raw materials, in the store's product shape
+  const [reloadKey, setReloadKey] = useState(0)
+  const [notes, setNotes] = useState('')
+  const [posting, setPosting] = useState(false)
+
+  const materialOptions = items.map((p) => ({ value: p.id, label: p.name }))
+  const supplierOptions = suppliers.map((s) => ({ value: s.id, label: s.name }))
+  const manufacturerOptions = manufacturers.map((m) => ({ value: m.id, label: m.name }))
+
+  const columns = [
+    { key: 'material', label: 'Raw material / recipe', type: 'select', options: materialOptions, width: 240, placeholder: 'Select material…' },
+    { key: 'onHand', label: 'On hand', type: 'static', align: 'right', width: 110 },
+    { key: 'qty', label: 'Qty arrived', type: 'number', width: 130, placeholder: '0' },
+    { key: 'unit', label: 'Unit', type: 'static', width: 100 },
+    { key: 'manufacturer', label: 'Manufacturer', type: 'select', options: manufacturerOptions, width: 210, placeholder: 'Use default' },
+    { key: 'mfgDate', label: 'Manufactured', type: 'date', width: 160 },
+    { key: 'expiry', label: 'Expiry date', type: 'date', width: 160 },
+    { key: 'unitCost', label: 'Unit cost (₦)', type: 'number', width: 150, placeholder: '0.00' },
+    { key: 'lineTotal', label: 'Line total (₦)', type: 'static', align: 'right', width: 150 },
+  ]
+
   // Arriving from Saved Drafts with a draft to resume — load its lines instead of a blank form.
-  const [rows, setRows] = useState(() => {
-    const opened = draftId && refillDrafts.find((d) => d.id === draftId)
-    return opened ? opened.rows.map((r) => ({ ...r, id: Math.random().toString(36).slice(2) })) : [blank()]
-  })
+  const [rows, setRows] = useState(() =>
+    openedDraft ? openedDraft.rows.map((r) => ({ ...r, id: Math.random().toString(36).slice(2) })) : [blank()]
+  )
   // Consume the draft once, on mount, so the resumed lines are not left duplicated in the list.
   useEffect(() => {
     if (draftId && refillDrafts.some((d) => d.id === draftId)) deleteDraft(draftId)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once for the draft this screen was opened with
   }, [])
+
+  // Name lookups for toStoreProduct, read through a ref so a change to the unit
+  // or category lists doesn't trigger a new request.
+  const lookupsRef = useRef(null)
+  lookupsRef.current = { factories, categories: categoryOptions(categories), units: unitOptions(units) }
+
+  // Load the raw materials of the chosen factory.
+  useEffect(() => {
+    if (!factoryId) { setItems([]); return }
+
+    let cancelled = false
+    inventoryApi.listStockItems(factoryId, 'RAW_MATERIAL')
+      .then(({ data }) => {
+        if (cancelled) return
+        setItems((data || []).map((i) => inventoryApi.toStoreProduct(i, lookupsRef.current)))
+      })
+      .catch((error) => {
+        if (!cancelled) showToast('Could not load materials', error.message, true)
+      })
+
+    return () => { cancelled = true }
+  }, [factoryId, reloadKey, showToast])
+
+  // The material list belongs to one factory, so a new factory clears the old
+  // list and any material already picked on the lines.
+  const changeFactory = (id) => {
+    setFactoryId(id)
+    setItems([])
+    setRows((rs) => rs.map((r) => ({ ...r, material: '' })))
+  }
+
   const drafts = refillDrafts.filter((d) => d.kind === 'raw')
   const goToDrafts = () => onNavigate?.({ id: 'f.refill.drafts', view: 'f.refill.drafts', label: 'Saved Drafts' })
+
   // Deliveries posted on this account, newest first — persisted in the store, each carries the reference it consumed.
   const posted = refills
     .filter((r) => r.kind === 'raw')
@@ -58,18 +104,25 @@ export default function StockRefillRaw({ leaf, moduleLabel, parentLabel, onNavig
     setRows((rs) => rs.map((r, ri) => (ri === i ? { ...r, [key]: value } : r)))
   }
 
+  const itemById = Object.fromEntries(items.map((p) => [p.id, p]))
   const decorated = rows.map((r) => {
+    const item = itemById[r.material]
+    const onHand = item ? Number(item.quantity ?? 0) : undefined
     const total = Number(r.qty) * Number(r.unitCost)
-    return { ...r, lineTotal: total ? total.toLocaleString(undefined, { minimumFractionDigits: 2 }) : undefined }
+    return {
+      ...r,
+      onHand: onHand === undefined ? undefined : onHand.toLocaleString(),
+      unit: item ? (item.unit || '—') : undefined,
+      lineTotal: total ? total.toLocaleString(undefined, { minimumFractionDigits: 2 }) : undefined,
+    }
   })
 
   const lines = rows.filter((r) => r.material).length
   const value = rows.reduce((n, r) => n + (Number(r.qty) || 0) * (Number(r.unitCost) || 0), 0)
   const missingExpiry = rows.some((r) => r.material && !r.expiry)
 
-  // Reserved for display only. The number is consumed when the delivery is posted,
-  // so an abandoned form never leaves a gap in the series.
-  const nextRef = peekRef('DL')
+  const recordedBy = user.name || user.email || 'Administrator'
+  const recordedRole = user.role || 'Administrator'
 
   const stash = () => {
     const filled = rows.filter((r) => r.material || r.qty || r.unitCost || r.manufacturer || r.expiry)
@@ -78,13 +131,16 @@ export default function StockRefillRaw({ leaf, moduleLabel, parentLabel, onNavig
       return
     }
     const qty = filled.reduce((n, r) => n + (Number(r.qty) || 0), 0)
-    const label = rawMaterials.find((m) => m.value === filled[0].material)?.label || 'Unnamed material'
+    const label = materialOptions.find((m) => m.value === filled[0].material)?.label || 'Unnamed material'
     saveDraft('raw', {
       rows: filled,
+      factoryId,   // so resuming brings back this factory's material list
+      supplierId,
+      manufacturerId,
       title: filled.length === 1 ? label : `${label} +${filled.length - 1} more`,
       lines: filled.length,
       units: qty,
-      by: user.name || user.email || 'Administrator',
+      by: recordedBy,
     })
     showToast('Draft saved', 'Find it under "Saved drafts" on this screen, or in Stock Refill › Saved Drafts.')
     setRows([blank()])
@@ -92,28 +148,100 @@ export default function StockRefillRaw({ leaf, moduleLabel, parentLabel, onNavig
 
   const resume = (draft) => {
     setRows(draft.rows.map((r) => ({ ...r, id: Math.random().toString(36).slice(2) })))
+    if (draft.factoryId) setFactoryId(draft.factoryId)
+    if (draft.supplierId) setSupplierId(draft.supplierId)
+    if (draft.manufacturerId) setManufacturerId(draft.manufacturerId)
     deleteDraft(draft.id)
     showToast('Draft reopened', `${draft.lines} line${draft.lines === 1 ? '' : 's'} restored — no reference is issued until you post.`)
   }
 
-  const post = () => {
+  const post = async () => {
+    if (!factoryId) {
+      showToast('Select a factory', 'Choose the factory receiving this delivery.', true)
+      return
+    }
+    if (!supplierId) {
+      showToast('Select a supplier', 'Choose who supplied these materials.', true)
+      return
+    }
     const valid = rows.filter((r) => r.material && Number(r.qty) > 0)
     if (!valid.length) {
       showToast('Nothing to post', 'Add at least one material line with a quantity.', true)
       return
     }
-    const ref = issueRef('DL')
-    const qty = valid.reduce((n, r) => n + Number(r.qty), 0)
-    const label = rawMaterials.find((m) => m.value === valid[0].material)?.label || 'Raw material'
-    postRefill('raw', {
-      ref,
-      title: valid.length === 1 ? label : `${label} +${valid.length - 1} more`,
-      qty: `+${qty.toLocaleString()}`,
-      lines: valid.map(({ material, qty: q, unit, manufacturer, mfgDate, expiry, unitCost }) => ({ material, qty: q, unit, manufacturer, mfgDate, expiry, unitCost })),
-      by: user.name || user.email || 'Administrator',
-    })
-    showToast(`Delivery posted — ${ref}`, `${valid.length} line${valid.length === 1 ? '' : 's'} received`)
-    setRows([blank()])
+    // A line's own manufacturer wins; otherwise the default from Delivery details is used.
+    const noManufacturer = valid.find((r) => !(r.manufacturer || manufacturerId))
+    if (noManufacturer) {
+      const name = itemById[noManufacturer.material]?.name || 'A line'
+      showToast('Manufacturer missing', `Select a manufacturer for ${name}, or set a default above.`, true)
+      return
+    }
+
+    setPosting(true)
+    const refs = []
+    const failed = []
+    let qtyTotal = 0
+
+    // The endpoint takes one material per request, so every line is its own
+    // delivery with its own reference. Unit, waybill, vehicle, QC and received
+    // date stay on the form only.
+    for (const line of valid) {
+      const item = itemById[line.material]
+      const lineManufacturer = line.manufacturer || manufacturerId
+      try {
+        const res = await inventoryApi.refillRawMaterials({
+          locationId: factoryId,
+          stockItemId: line.material,
+          supplierId,
+          manufacturerId: lineManufacturer,
+          quantity: Number(line.qty),
+          unitCost: Number(line.unitCost) || 0,
+          manufacturedDate: line.mfgDate || undefined,
+          expiryDate: line.expiry || undefined,
+          note: notes.trim(),
+        })
+        const done = res.data
+        const qty = Number(done?.quantity ?? line.qty)
+
+        postRefill('raw', {
+          ref: done.ref,
+          title: item?.name || 'Raw material',
+          qty: `+${qty.toLocaleString()}${item?.unit ? ` ${item.unit}` : ''}`,
+          lines: [{
+            material: line.material, qty, supplierId, manufacturer: lineManufacturer,
+            mfgDate: line.mfgDate, expiry: line.expiry, unitCost: line.unitCost,
+          }],
+          by: recordedBy,
+        })
+        refs.push(done.ref)
+        qtyTotal += qty
+      } catch (error) {
+        failed.push({ line, name: item?.name || 'A line', reason: error.message })
+      }
+    }
+    setPosting(false)
+
+    if (refs.length) setReloadKey((k) => k + 1) // refresh the "On hand" figures
+
+    if (!failed.length) {
+      showToast(
+        refs.length === 1 ? `Delivery posted — ${refs[0]}` : `${refs.length} deliveries posted`,
+        refs.length === 1
+          ? `${qtyTotal.toLocaleString()} received`
+          : `${refs[0]} … ${refs[refs.length - 1]} · ${qtyTotal.toLocaleString()} received`
+      )
+      setRows([blank()])
+      setNotes('')
+      return
+    }
+
+    // Lines that posted are already saved, so only the failed ones stay on the form for a retry.
+    showToast(
+      refs.length ? `${refs.length} posted, ${failed.length} failed` : 'Delivery failed',
+      `${failed[0].name}: ${failed[0].reason}${failed.length > 1 ? ` (+${failed.length - 1} more)` : ''}`,
+      true
+    )
+    setRows(failed.map((f) => f.line))
   }
 
   return (
@@ -123,6 +251,7 @@ export default function StockRefillRaw({ leaf, moduleLabel, parentLabel, onNavig
       icon={leaf?.icon}
       description="Receive raw materials and recipes on arrival. Capture the quantity delivered along with manufacturer, manufactured date and expiry date for each line."
       submitLabel="Receive delivery"
+      loading={posting}
       onSubmit={post}
       onCancel={() => setRows([blank()])}
       note="Expiry dates drive shelf-life alerts and the Re-Order Report — record them on every line."
@@ -185,18 +314,37 @@ export default function StockRefillRaw({ leaf, moduleLabel, parentLabel, onNavig
     >
       <Panel title="Delivery details" description="Who supplied the materials, against which document, and when they arrived.">
         <FieldSet columns={3}>
-          <Select label="Receiving factory" options={factories} placeholder="Select factory…" />
-          <Select label="Supplier" options={supplierOptions} placeholder="Select supplier…" />
+          <Select
+            label="Receiving factory"
+            value={factoryId}
+            onChange={(e) => changeFactory(e.target.value)}
+            options={factories.map((f) => ({ value: f.id, label: f.name }))}
+            placeholder="Select factory…"
+          />
+          <Select
+            label="Supplier"
+            value={supplierId}
+            onChange={(e) => setSupplierId(e.target.value)}
+            options={supplierOptions}
+            placeholder="Select supplier…"
+          />
+          <Select
+            label="Manufacturer"
+            value={manufacturerId}
+            onChange={(e) => setManufacturerId(e.target.value)}
+            options={manufacturerOptions}
+            placeholder="Select manufacturer…"
+          />
           <Input label="Date received" type="date" />
           <Input label="Supplier waybill / invoice no." placeholder="e.g. ACL-99231" />
           <Input label="Vehicle / driver" placeholder="Optional" />
-          <Input label="Reference no." hint="Issued automatically when the delivery is posted." disabled value={nextRef} />
+          <Input label="Reference no." hint="Issued automatically when the delivery is posted." disabled value="" placeholder="Assigned when posted" />
         </FieldSet>
       </Panel>
 
       <Panel
         title="Materials received"
-        description="One line per material. Manufacturer, manufactured date and expiry are captured per line."
+        description="One line per material. Manufacturer, manufactured date and expiry are captured per line; a blank manufacturer uses the default above."
       >
         <LineItems
           columns={columns}
@@ -223,6 +371,8 @@ export default function StockRefillRaw({ leaf, moduleLabel, parentLabel, onNavig
             <div style={{ font: 'var(--type-label)', color: 'var(--text-strong)', marginBottom: 6 }}>Notes</div>
             <textarea
               rows={3}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
               placeholder="e.g. Two bags showed minor tearing; weight verified and accepted."
               style={{
                 width: '100%', padding: '10px 12px', resize: 'vertical',
@@ -235,7 +385,9 @@ export default function StockRefillRaw({ leaf, moduleLabel, parentLabel, onNavig
         </div>
         <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
           <Badge tone="neutral" uppercase>Received by</Badge>
-          <span style={{ font: 'var(--type-ui)', color: 'var(--text-muted)' }}>K. Umeh · Quality Control · Factory A</span>
+          <span style={{ font: 'var(--type-ui)', color: 'var(--text-muted)' }}>
+            {recordedBy} · {recordedRole}{company.name ? ` · ${company.name}` : ''}
+          </span>
         </div>
       </Panel>
     </FormShell>

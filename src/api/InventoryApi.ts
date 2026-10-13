@@ -1,8 +1,9 @@
 //InventoryApi.ts
 
 import { BaseApi } from "./config.ts";
-import { StockItem, ItemTypes, CreateStokeItemResponse, ListStokeItemRespsonse } from "./types/InventoryTypes.ts";
-
+import { refillRawMaterialsCredentials,driver,driverResponse,listDriverResponse } from "./types/InventoryTypes.ts";
+import { StockItem, ItemTypes, CreateStokeItemResponse, ListStokeItemRespsonse,refillFinishedProductsCredentials,refillFinishedProductsResponse,refillRawMaterialsResponse } from "./types/InventoryTypes.ts";
+import { createStockTransferCredentials,CreateStockTransferResponse } from "./types/InventoryTypes.ts";
 /**
  * Lists the page already has, used to turn ids from the API into the labels
  * the register shows. Categories and units are { value, label } option lists
@@ -39,6 +40,7 @@ export default class InventoryApi extends BaseApi {
       kind: p.itemType === "RAW_MATERIAL" ? "raw" : "finished",
       code: p.code,
       name: p.name,
+      quantity: p.quantity ?? 60,
 
       // factory: the API only gives the id, so the name comes from the lookup
       factoryId: p.locationId,
@@ -86,6 +88,56 @@ export default class InventoryApi extends BaseApi {
       method: "GET",
       auth: true,
       query: { locationId, itemType },
+    });
+    return data;
+  }
+  
+  async refillFinishedProducts(d: refillFinishedProductsCredentials) {
+    const data = await this.request<refillFinishedProductsResponse>("/stock/refill/finished-product", {
+      method: "POST",
+      auth: true,
+      body: d,
+    });
+    return data;
+  }
+  async refillRawMaterials(d: refillRawMaterialsCredentials) {
+    const data = await this.request<refillRawMaterialsResponse>("/stock/refill/raw-material", {
+      method: "POST",
+      auth: true,
+      body: d,
+    });
+    return data;
+  }
+
+  async createDriver(d: driver) {
+    const data = await this.request<driverResponse>("/drivers", {
+      method: "POST",
+      auth: true,
+      body: d,
+    });
+    return data;
+  }
+  async listDrivers() {
+    const data = await this.request<listDriverResponse>("/drivers", {
+      method: "GET",
+      auth: true,
+    });
+    return data;
+  }
+  async updateDriver(id: string, d: driver) {
+    const data = await this.request<driverResponse>(`/drivers/${id}`, { 
+      method: "PUT",
+      auth: true,
+      body: d,
+    });
+    return data;
+  }
+
+  async createStockTransfer(d: createStockTransferCredentials) {
+    const data = await this.request<CreateStockTransferResponse>("/stock/transfers", {
+      method: "POST",
+      auth: true,
+      body: d,
     });
     return data;
   }

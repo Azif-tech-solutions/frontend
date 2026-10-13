@@ -1,21 +1,35 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Badge } from '../../ds/components/core/Badge.jsx'
 import { Button } from '../../ds/components/core/Button.jsx'
 import { Icon } from '../../ds/components/core/Icon.jsx'
 import { Input } from '../../ds/components/forms/Input.jsx'
 import { Select } from '../../ds/components/forms/Select.jsx'
+import Loader from '../../ds/components/core/Loader.jsx'
 import { FormShell } from '../shells/FormShell.jsx'
 import { Page, Panel, FieldSet, MetaRow, Callout } from '../shells/Page.jsx'
 import { PageHeader } from '../shells/PageHeader.jsx'
 import { LineItems } from '../shells/LineItems.jsx'
 import { DocumentSheet } from '../shells/DocumentView.jsx'
-import { factories, finishedProducts, transferDestinations, drivers, liveQuantities, recentTransfers } from '../sample.js'
-import { fmt } from '../utils.js'
+import { unitOptions } from '../unitOptions.js'
+import { categoryOptions } from '../categoryOptions.js'
+import { useStore } from '../store.jsx'
+import { fmt, fmtDate } from '../utils.js'
+import InventoryApi from '../../api/InventoryApi.js'
 
+const inventoryApi = new InventoryApi()
 const blank = () => ({ id: Math.random().toString(36).slice(2), product: '', qty: '', batch: '' })
+const today = () => new Date().toISOString().slice(0, 10)
+const blankDriver = { name: '', phone: '', vehicleNumber: '', licenceNumber: '' }
 
 /** Step 2 — the waybill produced on completion, handed to the driver. */
-function Waybill({ crumbs, onBack, lines, destination, driver }) {
+function Waybill({ crumbs, onBack, transfer, company }) {
+  const lines = (transfer.lines || []).map((l) => ({
+    product: l.stockItemName || l.stockItemCode,
+    batch: l.batchNo || '—',
+    qty: fmt(Number(l.qtySent) || 0),
+    unit: l.unit || '',
+  }))
+
   return (
     <Page>
       <PageHeader
@@ -36,18 +50,22 @@ function Waybill({ crumbs, onBack, lines, destination, driver }) {
       <div style={{ display: 'flex', justifyContent: 'center' }}>
         <DocumentSheet
           docType="Transfer Waybill"
-          docNumber="WB-8942"
+          docNumber={transfer.waybillRef}
           issuer={{
-            name: 'ZifIQ Manufacturing Ltd',
-            address: 'Factory A — 12 Oba Akran Avenue, Ikeja, Lagos',
-            contact: 'dispatch@zifiq.com · +234 802 000 0000',
-            vatId: 'NG-VAT-4471029',
+            name: company.name || '—',
+            address: [transfer.sourceLocationName, company.address].filter(Boolean).join(' — '),
+            contact: [company.email, company.phone].filter(Boolean).join(' · '),
+            vatId: company.taxRegistrationNumber || '—',
           }}
-          party={{ name: destination.label, address: destination.address, contact: destination.kind }}
+          party={{
+            name: transfer.destinationLocationName,
+            address: '',
+            contact: transfer.destinationLocationType,
+          }}
           meta={[
-            { label: 'Driver', value: driver.label },
-            { label: 'Vehicle no.', value: driver.vehicle, mono: true },
-            { label: 'Dispatch date', value: '24 Aug 2026' },
+            { label: 'Driver', value: transfer.driverName },
+            { label: 'Vehicle no.', value: transfer.driverVehicle, mono: true },
+            { label: 'Dispatch date', value: fmtDate(transfer.dispatchedAt || transfer.transferDate) },
           ]}
           columns={[
             { key: 'product', label: 'Product description' },
@@ -58,7 +76,7 @@ function Waybill({ crumbs, onBack, lines, destination, driver }) {
           lines={lines}
           totals={[
             { label: 'Total lines', value: String(lines.length) },
-            { label: 'Total quantity', value: fmt(lines.reduce((n, l) => n + Number(l.qty || 0), 0)), emphasis: true },
+            { label: 'Total quantity', value: fmt(Number(transfer.totalSent) || 0), emphasis: true },
           ]}
           stamp={<Badge tone="warning" uppercase>In transit</Badge>}
           footer="This waybill is an official transit document and must be presented on demand to any law enforcement agency. The receiving officer should cross-check all quantities against this document during offloading and record any rejection before signing."
@@ -69,40 +87,109 @@ function Waybill({ crumbs, onBack, lines, destination, driver }) {
 }
 
 export default function StockTransfer({ leaf, moduleLabel, parentLabel }) {
+  const { showToast, user, company, factories, categories, units } = useStore()
+
   const [step, setStep] = useState('compose')
-  const [destId, setDestId] = useState('sr-ikeja')
-  const [driverId, setDriverId] = useState('drv-1')
+  const [sourceId, setSourceId] = useState('')
+  const [destId, setDestId] = useState('')
+  const [transferDate, setTransferDate] = useState(today)
   const [rows, setRows] = useState([blank()])
 
-  const destination = transferDestinations.find((d) => d.value === destId) || transferDestinations[0]
-  const driver = drivers.find((d) => d.value === driverId) || drivers[0]
+  const [items, setItems] = useState([]) // source factory's finished products
+  const [itemsLoading, setItemsLoading] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
+
+  const [drivers, setDrivers] = useState([])
+  const [driversLoading, setDriversLoading] = useState(true)
+  const [driverId, setDriverId] = useState('')
+  const [showDriverForm, setShowDriverForm] = useState(false)
+  const [newDriver, setNewDriver] = useState(blankDriver)
+  const [savingDriver, setSavingDriver] = useState(false)
+
+  const [submitting, setSubmitting] = useState(false)
+  const [transfer, setTransfer] = useState(null) // the confirmed transfer returned by the API
+  const [sent, setSent] = useState([]) // transfers confirmed in this session, newest first
+
+  // Name lookups for toStoreProduct, read through a ref so a change to the unit
+  // or category lists doesn't trigger a new request.
+  const lookupsRef = useRef(null)
+  lookupsRef.current = { factories, categories: categoryOptions(categories), units: unitOptions(units) }
+
+  // Load drivers once.
+  useEffect(() => {
+    let cancelled = false
+    inventoryApi.listDrivers()
+      .then(({ data }) => { if (!cancelled) setDrivers(data || []) })
+      .catch((error) => { if (!cancelled) showToast('Could not load drivers', error.message, true) })
+      .finally(() => { if (!cancelled) setDriversLoading(false) })
+    return () => { cancelled = true }
+  }, [showToast])
+
+  // Load the finished products of the source factory.
+  useEffect(() => {
+    if (!sourceId) { setItems([]); return }
+
+    let cancelled = false
+    setItemsLoading(true)
+    inventoryApi.listStockItems(sourceId, 'FINISHED_PRODUCT')
+      .then(({ data }) => {
+        if (cancelled) return
+        setItems((data || []).map((i) => inventoryApi.toStoreProduct(i, lookupsRef.current)))
+      })
+      .catch((error) => {
+        if (!cancelled) showToast('Could not load products', error.message, true)
+      })
+      .finally(() => { if (!cancelled) setItemsLoading(false) })
+
+    return () => { cancelled = true }
+  }, [sourceId, reloadKey, showToast])
+
+  // The product list belongs to one factory, so a new source clears the old list
+  // and any product already picked. The destination can't be the same factory.
+  const changeSource = (id) => {
+    setSourceId(id)
+    setItems([])
+    setRows((rs) => rs.map((r) => ({ ...r, product: '' })))
+    if (id === destId) setDestId('')
+  }
+
+  const factoryOptions = factories.map((f) => ({ value: f.id, label: f.name }))
+  const destinationOptions = factoryOptions.filter((f) => f.value !== sourceId)
+  const destination = factories.find((f) => f.id === destId)
+  const driverOptions = drivers.map((d) => ({ value: d.id, label: d.name }))
+  const driver = drivers.find((d) => d.id === driverId)
+
+  const finishedProducts = items.map((p) => ({ value: p.id, label: p.name }))
+  const itemById = Object.fromEntries(items.map((p) => [p.id, p]))
 
   function update(i, key, value) {
     setRows((rs) => rs.map((r, ri) => (ri === i ? { ...r, [key]: value } : r)))
   }
 
   const decorated = rows.map((r) => {
-    const available = liveQuantities[r.product]
+    const item = itemById[r.product]
+    const available = item ? Number(item.quantity ?? 0) : undefined
     const qty = Number(r.qty) || 0
     return {
       ...r,
-      available: available != null ? fmt(available) : undefined,
-      remaining: available != null && qty ? fmt(available - qty) : undefined,
-      unit: r.product ? 'Cartons' : undefined,
+      available: available !== undefined ? fmt(available) : undefined,
+      remaining: available !== undefined && qty ? fmt(available - qty) : undefined,
+      unit: item ? (item.unit || '—') : undefined,
     }
   })
 
-  // Test Case 2 — a line may never exceed available stock at the source.
+  // A line may never exceed available stock at the source.
   const errors = rows.map((r) => {
-    const available = liveQuantities[r.product]
+    const item = itemById[r.product]
     const qty = Number(r.qty) || 0
-    if (!r.product || !qty || available == null) return null
+    if (!item || !qty) return null
+    const available = Number(item.quantity ?? 0)
     if (qty > available) return { field: 'qty', message: `Transfer quantity exceeds available stock at source (${fmt(available)} on hand).` }
     return null
   })
 
   const columns = [
-    { key: 'product', label: 'Finished product', type: 'select', options: finishedProducts, width: 250, placeholder: 'Select product…' },
+    { key: 'product', label: 'Finished product', type: 'select', options: finishedProducts, width: 250, placeholder: sourceId ? 'Select product…' : 'Select source factory first' },
     { key: 'available', label: 'Available', type: 'static', align: 'right', width: 120 },
     { key: 'qty', label: 'Qty to transfer', type: 'number', width: 150, placeholder: '0' },
     { key: 'unit', label: 'Unit', type: 'static', width: 110 },
@@ -115,115 +202,252 @@ export default function StockTransfer({ leaf, moduleLabel, parentLabel }) {
   const blocked = errors.some(Boolean)
 
   const crumbs = [moduleLabel, parentLabel, leaf?.label].filter(Boolean)
+  const recordedBy = user.name || user.email || 'Administrator'
 
-  if (step === 'waybill') {
+  const saveDriver = async () => {
+    const { name, phone, vehicleNumber, licenceNumber } = newDriver
+    if (!name.trim() || !phone.trim() || !vehicleNumber.trim() || !licenceNumber.trim()) {
+      showToast('Driver incomplete', 'Name, phone, vehicle number and licence number are all required.', true)
+      return
+    }
+    setSavingDriver(true)
+    try {
+      const res = await inventoryApi.createDriver({
+        name: name.trim(),
+        phone: phone.trim(),
+        vehicleNumber: vehicleNumber.trim(),
+        licenceNumber: licenceNumber.trim(),
+      })
+      const created = res.data
+      setDrivers((ds) => [...ds, created])
+      setDriverId(created.id)
+      setNewDriver(blankDriver)
+      setShowDriverForm(false)
+      showToast('Driver added', `${created.name} is selected for this transfer.`)
+    } catch (error) {
+      showToast('Could not add driver', error.message, true)
+    } finally {
+      setSavingDriver(false)
+    }
+  }
+
+  const submit = async () => {
+    if (!sourceId) { showToast('Select a source factory', 'Choose where the goods are leaving from.', true); return }
+    if (!destId) { showToast('Select a destination', 'Choose the factory the goods are going to.', true); return }
+    if (!driver) { showToast('Select a driver', 'Choose the driver, or add a new one.', true); return }
+    if (!transferDate) { showToast('Transfer date missing', 'Pick the date of this transfer.', true); return }
+
+    const valid = rows.filter((r) => r.product && Number(r.qty) > 0)
+    if (!valid.length) { showToast('Nothing to transfer', 'Add at least one product line with a quantity.', true); return }
+    if (blocked) { showToast('Transfer blocked', 'One or more lines exceed the stock available at the source.', true); return }
+
+    setSubmitting(true)
+    try {
+      const res = await inventoryApi.createStockTransfer({
+        sourceLocationId: sourceId,
+        destinationLocationId: destId,
+        driverId: driver.id,
+        driverName: driver.name,
+        driverVehicle: driver.vehicleNumber,
+        transferDate,
+        lines: valid.map((r) => ({
+          stockItemId: r.product,
+          quantity: Number(r.qty),
+          unitPrice: Number(itemById[r.product]?.landingCost) || 0,
+          fromLocationId: sourceId,
+          batchNo: r.batch.trim(),
+        })),
+      })
+      const done = res.data
+      setTransfer(done)
+      setSent((s) => [{
+        ref: done.waybillRef,
+        destination: done.destinationLocationName,
+        qty: fmt(Number(done.totalSent) || 0),
+        when: fmtDate(done.dispatchedAt || done.transferDate),
+        by: recordedBy,
+      }, ...s])
+      showToast(`Transfer confirmed — ${done.waybillRef}`, `${valid.length} line${valid.length === 1 ? '' : 's'} dispatched to ${done.destinationLocationName}`)
+      setStep('waybill')
+    } catch (error) {
+      showToast('Transfer failed', error.message, true)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (step === 'waybill' && transfer) {
     return (
       <Waybill
         crumbs={crumbs}
-        destination={destination}
-        driver={driver}
-        lines={decorated.filter((r) => r.product).map((r) => ({
-          product: finishedProducts.find((p) => p.value === r.product)?.label || r.product,
-          batch: r.batch || '—',
-          qty: fmt(Number(r.qty) || 0),
-          unit: 'Cartons',
-        }))}
-        onBack={() => { setStep('compose'); setRows([blank()]) }}
+        transfer={transfer}
+        company={company}
+        onBack={() => {
+          setStep('compose')
+          setRows([blank()])
+          setTransfer(null)
+          setReloadKey((k) => k + 1) // refresh the "Available" figures
+        }}
       />
     )
   }
 
   return (
-    <FormShell
-      wide
-      crumbs={[moduleLabel, parentLabel]}
-      title={leaf?.label || 'Stock Transfer'}
-      icon={leaf?.icon}
-      description="Transfer finished products to outlets, showrooms and authorised dealers. Completing a transfer generates a waybill with a unique reference number for the driver."
-      submitLabel="Confirm transfer"
-      onCancel={() => {}}
-      onSubmit={() => { if (!blocked && active.length) setStep('waybill') }}
-      note="Stock is deducted from the source only once the transfer is confirmed. A waybill is generated automatically at that point."
-      secondaryAction={<Button variant="secondary" iconLeft="save">Save draft</Button>}
-      aside={
-        <>
-          <Panel title="Transfer summary">
-            <MetaRow label="Product lines" value={active.length || '—'} mono />
-            <MetaRow label="Total quantity" value={totalQty ? fmt(totalQty) : '—'} mono />
-            <MetaRow label="Destination" value={destination.label} />
-            <MetaRow label="Destination type" value={destination.kind} />
-            {blocked && (
-              <Callout tone="danger" icon="circle-alert" title="Transfer blocked" style={{ marginTop: 14 }}>
-                One or more lines exceed the stock available at the source. No stock movement will be recorded until
-                every quantity is within the available balance.
-              </Callout>
-            )}
-          </Panel>
+    <>
+      {submitting && <Loader overlay label="Confirming transfer…" />}
+      <FormShell
+        wide
+        crumbs={[moduleLabel, parentLabel]}
+        title={leaf?.label || 'Stock Transfer'}
+        icon={leaf?.icon}
+        description="Transfer finished products to another factory. Completing a transfer generates a waybill with a unique reference number for the driver."
+        submitLabel="Confirm transfer"
+        loading={submitting}
+        onCancel={() => setRows([blank()])}
+        onSubmit={submit}
+        note="Stock is deducted from the source only once the transfer is confirmed. A waybill is generated automatically at that point."
+        aside={
+          <>
+            <Panel title="Transfer summary">
+              <MetaRow label="Product lines" value={active.length || '—'} mono />
+              <MetaRow label="Total quantity" value={totalQty ? fmt(totalQty) : '—'} mono />
+              <MetaRow label="Destination" value={destination?.name || '—'} />
+              <MetaRow label="Driver" value={driver?.name || '—'} />
+              {blocked && (
+                <Callout tone="danger" icon="circle-alert" title="Transfer blocked" style={{ marginTop: 14 }}>
+                  One or more lines exceed the stock available at the source. No stock movement will be recorded until
+                  every quantity is within the available balance.
+                </Callout>
+              )}
+            </Panel>
 
-          <Panel title="Recent transfers" padding={0}>
-            <div style={{ padding: '4px 16px 12px' }}>
-              {recentTransfers.map((t) => (
-                <div key={t.ref} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border-subtle)' }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ font: 'var(--fw-semibold) var(--text-sm)/1.3 var(--font-ui)', color: 'var(--text-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.destination}</div>
-                    <div style={{ font: 'var(--type-caption)', color: 'var(--text-subtle)', marginTop: 2 }}>{t.ref} · {t.when} · {t.by}</div>
+            <Panel title="Recent transfers" padding={0}>
+              <div style={{ padding: '4px 16px 12px' }}>
+                {sent.length === 0 && (
+                  <div style={{ padding: '12px 0', font: 'var(--type-caption)', color: 'var(--text-subtle)' }}>
+                    No transfers confirmed yet.
                   </div>
-                  <span style={{ font: 'var(--fw-bold) var(--text-xs)/1 var(--font-mono)', color: 'var(--text-muted)', flexShrink: 0 }}>{t.qty}</span>
-                </div>
-              ))}
-            </div>
-          </Panel>
-        </>
-      }
-    >
-      <Panel title="Route" description="Where the goods are leaving from and where they are going.">
-        <FieldSet columns={3}>
-          <Select label="Source factory" options={factories} value="fa" onChange={() => {}} />
-          <Select
-            label="Destination"
-            options={transferDestinations}
-            value={destId}
-            onChange={(e) => setDestId(e.target.value)}
-          />
-          <Input label="Transfer date" type="date" />
-        </FieldSet>
-        <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <Badge tone={destination.kind === 'Dealer' ? 'warning' : 'brand'}>{destination.kind}</Badge>
-          <span style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
-            <Icon name="map-pin" size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
-            {destination.address}
-          </span>
-        </div>
-      </Panel>
-
-      <Panel title="Driver & vehicle" description="Printed on the waybill and presented during transit.">
-        <FieldSet columns={3}>
-          <Select label="Driver" options={drivers} value={driverId} onChange={(e) => setDriverId(e.target.value)} />
-          <Input label="Vehicle number" value={driver.vehicle} onChange={() => {}} />
-          <Input label="Driver phone" placeholder="+234 …" />
-        </FieldSet>
-      </Panel>
-
-      <Panel
-        title="Items to transfer"
-        description="Each line is checked against live stock at the source factory."
-        actions={<Button variant="secondary" size="sm" iconLeft="qr-code">Scan</Button>}
+                )}
+                {sent.map((t) => (
+                  <div key={t.ref} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ font: 'var(--fw-semibold) var(--text-sm)/1.3 var(--font-ui)', color: 'var(--text-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.destination}</div>
+                      <div style={{ font: 'var(--type-caption)', color: 'var(--text-subtle)', marginTop: 2 }}>{t.ref} · {t.when} · {t.by}</div>
+                    </div>
+                    <span style={{ font: 'var(--fw-bold) var(--text-xs)/1 var(--font-mono)', color: 'var(--text-muted)', flexShrink: 0 }}>{t.qty}</span>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          </>
+        }
       >
-        <LineItems
-          columns={columns}
-          rows={decorated}
-          errors={errors}
-          onChange={update}
-          onAdd={() => setRows((rs) => [...rs, blank()])}
-          onRemove={(i) => setRows((rs) => (rs.length === 1 ? rs : rs.filter((_, ri) => ri !== i)))}
-          addLabel="Add product"
-          emptyLabel="No products added yet."
-          summary={[
-            { label: 'Lines', value: active.length },
-            { label: 'Total qty', value: fmt(totalQty) },
-          ]}
-        />
-      </Panel>
-    </FormShell>
+        <Panel title="Route" description="Where the goods are leaving from and where they are going.">
+          <FieldSet columns={3}>
+            <Select
+              label="Source factory"
+              options={factoryOptions}
+              value={sourceId}
+              onChange={(e) => changeSource(e.target.value)}
+              placeholder="Select source factory…"
+            />
+            <Select
+              label="Destination factory"
+              options={destinationOptions}
+              value={destId}
+              onChange={(e) => setDestId(e.target.value)}
+              placeholder="Select destination…"
+            />
+            <Input label="Transfer date" type="date" value={transferDate} onChange={(e) => setTransferDate(e.target.value)} />
+          </FieldSet>
+          {destination && (
+            <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <Badge tone="brand">Factory</Badge>
+              {destination.address && (
+                <span style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
+                  <Icon name="map-pin" size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
+                  {destination.address}
+                </span>
+              )}
+            </div>
+          )}
+        </Panel>
+
+        <Panel title="Driver & vehicle" description="Printed on the waybill and presented during transit.">
+          {driversLoading ? (
+            <Loader label="Loading drivers…" size={28} />
+          ) : (
+            <>
+              <FieldSet columns={3}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Select
+                      label="Driver"
+                      options={driverOptions}
+                      value={driverId}
+                      onChange={(e) => setDriverId(e.target.value)}
+                      placeholder="Select driver…"
+                    />
+                  </div>
+                  <Button
+                    variant="secondary"
+                    iconLeft={showDriverForm ? 'x' : 'plus'}
+                    onClick={() => setShowDriverForm((v) => !v)}
+                  >
+                    {showDriverForm ? 'Cancel' : 'Add'}
+                  </Button>
+                </div>
+                <Input label="Vehicle number" value={driver?.vehicleNumber || ''} disabled placeholder="Filled from driver" />
+                <Input label="Driver phone" value={driver?.phone || ''} disabled placeholder="Filled from driver" />
+              </FieldSet>
+
+              {showDriverForm && (
+                <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
+                  <div style={{ font: 'var(--fw-semibold) var(--text-sm)/1.3 var(--font-ui)', color: 'var(--text-strong)', marginBottom: 12 }}>
+                    New driver
+                  </div>
+                  <FieldSet columns={2}>
+                    <Input label="Full name" value={newDriver.name} onChange={(e) => setNewDriver((d) => ({ ...d, name: e.target.value }))} placeholder="e.g. Musa Ibrahim" />
+                    <Input label="Phone" value={newDriver.phone} onChange={(e) => setNewDriver((d) => ({ ...d, phone: e.target.value }))} placeholder="+234 …" />
+                    <Input label="Vehicle number" value={newDriver.vehicleNumber} onChange={(e) => setNewDriver((d) => ({ ...d, vehicleNumber: e.target.value }))} placeholder="e.g. LSR-482-XA" />
+                    <Input label="Licence number" value={newDriver.licenceNumber} onChange={(e) => setNewDriver((d) => ({ ...d, licenceNumber: e.target.value }))} placeholder="Driver's licence no." />
+                  </FieldSet>
+                  <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
+                    <Button iconLeft="save" onClick={saveDriver} disabled={savingDriver}>
+                      {savingDriver ? 'Saving…' : 'Save driver'}
+                    </Button>
+                    <Button variant="ghost" onClick={() => { setShowDriverForm(false); setNewDriver(blankDriver) }} disabled={savingDriver}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </Panel>
+
+        <Panel
+          title="Items to transfer"
+          description="Each line is checked against live stock at the source factory."
+          actions={<Button variant="secondary" size="sm" iconLeft="qr-code">Scan</Button>}
+        >
+          {itemsLoading && <Loader label="Loading products…" size={28} />}
+          <LineItems
+            columns={columns}
+            rows={decorated}
+            errors={errors}
+            onChange={update}
+            onAdd={() => setRows((rs) => [...rs, blank()])}
+            onRemove={(i) => setRows((rs) => (rs.length === 1 ? rs : rs.filter((_, ri) => ri !== i)))}
+            addLabel="Add product"
+            emptyLabel="No products added yet."
+            summary={[
+              { label: 'Lines', value: active.length },
+              { label: 'Total qty', value: fmt(totalQty) },
+            ]}
+          />
+        </Panel>
+      </FormShell>
+    </>
   )
 }
