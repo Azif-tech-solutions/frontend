@@ -280,3 +280,50 @@ export interface movementReportResponse {
   data: movementReportResponseData[];
 }
 
+
+export interface groupCardFilterCredentials{
+  groupBy:"CATEGORY";
+  groupId: string;
+  locationId?: string;
+  from?:string;//date
+  to?:string;//date
+}
+
+export interface StockLedgerMember {
+  stockItemId: string;
+  code: string;
+  name: string;
+  unit: string;
+}
+
+export interface StockLedgerHeader {
+  groupType: string;
+  groupId: string;
+  groupName: string;
+  members: StockLedgerMember[];
+  openingBalance: number;
+  totalReceived: number;
+  totalIssued: number;
+  closingBalance: number;
+}
+
+export interface StockLedgerRow {
+  sn: number;
+  date: string;
+  itemCode: string;
+  itemName: string;
+  locationName: string;
+  remark: string;
+  qtyIn: number;
+  qtyOut: number;
+  qtyRemain: number;
+}
+
+export interface StockLedgerResponseData {
+  header: StockLedgerHeader;
+  rows: StockLedgerRow[];
+}
+
+export interface StockLedgerResponse {
+  data: StockLedgerResponseData;
+}

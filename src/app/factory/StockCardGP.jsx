@@ -1,19 +1,33 @@
 import { useState } from 'react'
 import { ReportShell } from '../shells/ReportShell.jsx'
 import { CardIdentity, GroupMembers } from './cardParts.jsx'
-import { cardFilters } from './cardConfig.js'
+import { stockKinds } from '../sample.js'
+// import { cardFilters } from './cardConfig.js'
+// import userSort from '../utils/userSort.js'
+import { useStore } from '../store.jsx'
 import { stockGroups, stockCardRows, cardOpeningBalance, withRunningBalance } from '../sample.js'
-
+// import Inventory from '../Inventory.jsx'
+import InventoryApi from '../../api/InventoryApi.js'
+import Loader from '../../ds/components/core/Loader.jsx'
 const num = (n) => (n ? n.toLocaleString() : '—')
 
 export default function StockCardGP({ leaf, moduleLabel, parentLabel }) {
+  const { factories, products, units, categories, addUnit, upsertProduct, showToast } = useStore()
+  const [factoryId, setFactoryId] = useState('')
   const [group] = useState(stockGroups[0])
   const rows = withRunningBalance(stockCardRows, cardOpeningBalance, 'qtyRemain')
 
   const totalIn = stockCardRows.reduce((n, r) => n + r.qtyIn, 0)
   const totalOut = stockCardRows.reduce((n, r) => n + r.qtyOut, 0)
   const closing = cardOpeningBalance + totalIn - totalOut
-
+  const cardFilters = [
+  { key: 'factory', label: 'Factory', type: 'select', options: factories.map((v)=> ({value:v.id,label:v.name})) },
+  { key: 'kind', label: 'Stock type', type: 'select', options: stockKinds.map(({ value, label }) => ({ value, label })) },
+  // { key: 'brand', label: 'Brand', type: 'select', options: brands },
+  { key: 'group', label: 'Stock name (group)', type: 'select', options: categories.map((v)=> ({value:v.id,label:v.name})) },
+  { key: 'from', label: 'Date from', type: 'date' },
+  { key: 'to', label: 'Date to', type: 'date' },
+]
   const columns = [
     { key: 'sn', label: 'SN', width: 64, align: 'right', mono: true },
     { key: 'date', label: 'Date', width: 130 },

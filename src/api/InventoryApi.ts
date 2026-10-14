@@ -7,6 +7,7 @@ import { createStockTransferCredentials,CreateStockTransferResponse } from "./ty
 import { quantityAdjustmentCredentials,LiveQuantityAdjustmentResponse } from "./types/InventoryTypes.ts";
 import { listStockTransferFilterCredentials,listStockTransferResponse } from "./types/InventoryTypes.ts";
 import { movementReportFilterCredentials,movementReportResponse } from "./types/InventoryTypes.ts";
+import { groupCardFilterCredentials,StockLedgerResponse } from "./types/InventoryTypes.ts";
 /**
  * Lists the page already has, used to turn ids from the API into the labels
  * the register shows. Categories and units are { value, label } option lists
@@ -43,7 +44,7 @@ export default class InventoryApi extends BaseApi {
       kind: p.itemType === "RAW_MATERIAL" ? "raw" : "finished",
       code: p.code,
       name: p.name,
-      quantity: p.quantity ?? 60,
+      quantity: p.quantity ?? 20,
 
       // factory: the API only gives the id, so the name comes from the lookup
       factoryId: p.locationId,
@@ -170,6 +171,15 @@ export default class InventoryApi extends BaseApi {
 
   async listMovementReports(d: movementReportFilterCredentials) {
     const data = await this.request<movementReportResponse>("/stock/movement-report", {
+      method: "GET",
+      auth: true,
+      query: d,
+    });
+    return data;
+  }
+
+  async listStockLedger(d: groupCardFilterCredentials) {
+    const data = await this.request<StockLedgerResponse>("/stock/ledger", {
       method: "GET",
       auth: true,
       query: d,
