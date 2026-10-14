@@ -22,13 +22,134 @@ const today = () => new Date().toISOString().slice(0, 10)
 const blankDriver = { name: '', phone: '', vehicleNumber: '', licenceNumber: '' }
 
 /** Step 2 — the waybill produced on completion, handed to the driver. */
+// function Waybill({ crumbs, onBack, transfer, company }) {
+//   const lines = (transfer.lines || []).map((l) => ({
+//     product: l.stockItemName || l.stockItemCode,
+//     batch: l.batchNo || '—',
+//     qty: fmt(Number(l.qtySent) || 0),
+//     unit: l.unit || '',
+//   }))
+
+//   return (
+//     <Page>
+//       <PageHeader
+//         crumbs={crumbs}
+//         title="Transfer waybill"
+//         icon="truck"
+//         description="Print and hand this document to the driver. It serves as the official transit document and is used to cross-check goods during offloading at the destination."
+//         meta={<Badge tone="success">Transfer confirmed · stock deducted from source</Badge>}
+//         actions={
+//           <>
+//             <Button variant="ghost" iconLeft="arrow-left" onClick={onBack}>New transfer</Button>
+//             <Button variant="secondary" iconLeft="download">Download PDF</Button>
+//             <Button iconLeft="printer">Print waybill</Button>
+//           </>
+//         }
+//       />
+
+//       <div style={{ display: 'flex', justifyContent: 'center' }}>
+//         <DocumentSheet
+//           docType="Transfer Waybill"
+//           docNumber={transfer.waybillRef}
+//           issuer={{
+//             name: company.name || '—',
+//             address: [transfer.sourceLocationName, company.address].filter(Boolean).join(' — '),
+//             contact: [company.email, company.phone].filter(Boolean).join(' · '),
+//             vatId: company.taxRegistrationNumber || '—',
+//           }}
+//           party={{
+//             name: transfer.destinationLocationName,
+//             address: '',
+//             contact: transfer.destinationLocationType,
+//           }}
+//           meta={[
+//             { label: 'Driver', value: transfer.driverName },
+//             { label: 'Vehicle no.', value: transfer.driverVehicle, mono: true },
+//             { label: 'Dispatch date', value: fmtDate(transfer.dispatchedAt || transfer.transferDate) },
+//           ]}
+//           columns={[
+//             { key: 'product', label: 'Product description' },
+//             { key: 'batch', label: 'Batch no.', mono: true },
+//             { key: 'qty', label: 'Quantity', align: 'right', mono: true },
+//             { key: 'unit', label: 'Unit', align: 'right' },
+//           ]}
+//           lines={lines}
+//           totals={[
+//             { label: 'Total lines', value: String(lines.length) },
+//             { label: 'Total quantity', value: fmt(Number(transfer.totalSent) || 0), emphasis: true },
+//           ]}
+//           stamp={<Badge tone="warning" uppercase>In transit</Badge>}
+//           footer="This waybill is an official transit document and must be presented on demand to any law enforcement agency. The receiving officer should cross-check all quantities against this document during offloading and record any rejection before signing."
+//         />
+//       </div>
+//     </Page>
+//   )
+// }
+/** Step 2 — the waybill produced on completion, handed to the driver. */
 function Waybill({ crumbs, onBack, transfer, company }) {
+  const { showToast } = useStore()
+  const [busy, setBusy] = useState(null) // 'download' | 'print' | null
+  const blobRef = useRef(null) // fetched once, reused by both buttons
+
   const lines = (transfer.lines || []).map((l) => ({
     product: l.stockItemName || l.stockItemCode,
     batch: l.batchNo || '—',
     qty: fmt(Number(l.qtySent) || 0),
     unit: l.unit || '',
   }))
+
+  // Fetch the PDF from the waybillUrl the API returned.
+  const getPdf = async () => {
+    if (!blobRef.current) {
+      const blob = await inventoryApi.fetchWaybillPdf(transfer.waybillUrl)
+      blobRef.current = new Blob([blob], { type: 'application/pdf' })
+    }
+    return blobRef.current
+  }
+
+  const download = async () => {
+    setBusy('download')
+    try {
+      const url = URL.createObjectURL(await getPdf())
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${transfer.waybillRef || 'waybill'}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 10000)
+    } catch (error) {
+      showToast('Could not download waybill', error.message, true)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const print = async () => {
+    setBusy('print')
+    try {
+      const url = URL.createObjectURL(await getPdf())
+      // Load the PDF into a hidden frame and open the print dialog.
+      const frame = document.createElement('iframe')
+      frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;'
+      frame.src = url
+      frame.onload = () => {
+        try {
+          frame.contentWindow.focus()
+          frame.contentWindow.print()
+        } catch {
+          // Some browsers block printing from a frame — open the PDF so it can be printed from the viewer.
+          window.open(url, '_blank')
+        }
+      }
+      document.body.appendChild(frame)
+      setTimeout(() => { frame.remove(); URL.revokeObjectURL(url) }, 60000)
+    } catch (error) {
+      showToast('Could not print waybill', error.message, true)
+    } finally {
+      setBusy(null)
+    }
+  }
 
   return (
     <Page>
@@ -40,12 +161,18 @@ function Waybill({ crumbs, onBack, transfer, company }) {
         meta={<Badge tone="success">Transfer confirmed · stock deducted from source</Badge>}
         actions={
           <>
-            <Button variant="ghost" iconLeft="arrow-left" onClick={onBack}>New transfer</Button>
-            <Button variant="secondary" iconLeft="download">Download PDF</Button>
-            <Button iconLeft="printer">Print waybill</Button>
+            <Button variant="ghost" iconLeft="arrow-left" onClick={onBack} disabled={!!busy}>New transfer</Button>
+            <Button variant="secondary" iconLeft="download" onClick={download} disabled={!!busy || !transfer.waybillUrl}>
+              {busy === 'download' ? 'Preparing…' : 'Download PDF'}
+            </Button>
+            <Button iconLeft="printer" onClick={print} disabled={!!busy || !transfer.waybillUrl}>
+              {busy === 'print' ? 'Preparing…' : 'Print waybill'}
+            </Button>
           </>
         }
       />
+
+      {busy && <Loader overlay label={busy === 'print' ? 'Preparing waybill for print…' : 'Downloading waybill…'} />}
 
       <div style={{ display: 'flex', justifyContent: 'center' }}>
         <DocumentSheet

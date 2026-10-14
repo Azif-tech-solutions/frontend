@@ -196,3 +196,87 @@ export interface StockTransferResponseData {
 export interface CreateStockTransferResponse {
   data: StockTransferResponseData;
 }
+
+export interface listStockTransferFilterCredentials {
+  locationId: string;
+  q?: string;
+  // sourceType?: "TRANSFER_OUT" | "REFILL" | "QUANTITY_ADJUSTMENT";
+   from?:string;//date
+  to?:string;//date
+}
+export interface listStockTransferResponse {
+  data: StockTransferResponseData[];
+}
+export interface quantityAdjustmentCredentials {
+  locationId: string;
+  stockItemId: string;
+  mode: "DELTA" | "COUNTED";
+  direction: "NEGATIVE" | "POSITIVE";
+  quantity: number;
+  countedQuantity?: number;
+  reason:
+    | "DAMAGED_BROKEN"
+    | "OTHER"
+    | "MISCOUNT_CORRECTION"
+    | "EXPIRED_WRITEOFF"
+    | "UNRECORDED_RETURN"
+    | "SUSPECTED_THEFT"
+    | "STOCKTAKE_VARIANCE";
+  note: string;
+  otpChallengeId: string | null;
+}
+
+export interface LiveQuantityAdjustmentResponseData {
+  id: string;
+  ref: string;
+  locationId: string;
+  locationName: string;
+  rootLocationName: string;
+  stockItemId: string;
+  productCode: string;
+  productName: string;
+  unit: string;
+  mode: string;
+  direction: string;
+  quantity: number;
+  recordedQuantity: number;
+  newQuantity: number;
+  reason: string;
+  note: string;
+  otpVerified: boolean;
+  performedBy: string;
+  performedByName: string;
+  at: string;
+}
+
+
+export interface LiveQuantityAdjustmentResponse {
+  data: LiveQuantityAdjustmentResponseData;
+}
+
+export interface movementReportFilterCredentials {
+  locationId: string;
+  stockItemId?: string;
+  sourceType?: "TRANSFER_OUT" | "REFILL" | "QUANTITY_ADJUSTMENT";
+   from?:string;//date
+  to?:string;//date
+}
+
+export interface movementReportResponseData {
+  
+      sn: number;
+      date: string;
+      locationId: string;
+      stockItemId: string;
+      itemCode: string;
+      itemName: string;
+      sourceType: string;
+      sourceReference: string;
+      qtyIn: number;
+      qtyOut: number; 
+    
+}
+export interface movementReportResponse {
+  data: movementReportResponseData[];
+}
+

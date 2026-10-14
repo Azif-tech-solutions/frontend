@@ -1,6 +1,6 @@
 // Stock Transfer
 
-//ensure that the print /download way bill uses the waybill url
+//ensure that the print /download way bill uses the waybillurl
 
 {
     "data": {

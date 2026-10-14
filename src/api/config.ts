@@ -32,7 +32,7 @@ interface RequestOptions {
   method?: HttpMethod; // defaults to "GET"
   body?: unknown; // any JSON-serialisable value; stringified automatically
   headers?: Record<string, string>; // extra headers, merged over getHeaders()
-  query?: Record<string, string | number | boolean | undefined>; // becomes ?key=value
+  query?: unknown; // becomes ?key=value
   signal?: AbortSignal; // lets you cancel the request (e.g. on component unmount)
   auth?: boolean; // true=send access token as a Bearer header
   resource?: string;
@@ -253,6 +253,38 @@ export class BaseApi {
   clearTokens() {
     const { accessToken, refreshToken, ...rest } = this.readConfig();
     localStorage.setItem(KEY, JSON.stringify(rest));
+  }
+
+    /** Resolves a server-relative path like "/api/v1/..." against the backend's origin (host only). */
+  protected resolveUrl(path: string): string {
+    return new URL(path, new URL(this.backendBaseUrl).origin).toString();
+  }
+
+  /** Authenticated GET that returns a file (PDF etc.) instead of JSON. Refreshes the token once on a 401. */
+  protected async requestBlob(path: string): Promise<Blob> {
+    const attempt = async () => {
+      const { accessToken } = this.getTokens();
+      if (!accessToken) throw new ApiError(401, null, "You are not signed in", "NO_TOKEN");
+
+      const response = await fetch(this.resolveUrl(path), {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!response.ok) {
+        throw new ApiError(response.status, null, `Request failed with status ${response.status}`);
+      }
+      return response.blob();
+    };
+
+    try {
+      return await attempt();
+    } catch (err) {
+      const shouldRefresh =
+        err instanceof ApiError && err.status === 401 && !!this.getTokens().refreshToken;
+      if (!shouldRefresh) throw err;
+
+      await this.refreshTokens();
+      return attempt();
+    }
   }
 }
 

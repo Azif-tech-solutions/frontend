@@ -4,6 +4,9 @@ import { BaseApi } from "./config.ts";
 import { refillRawMaterialsCredentials,driver,driverResponse,listDriverResponse } from "./types/InventoryTypes.ts";
 import { StockItem, ItemTypes, CreateStokeItemResponse, ListStokeItemRespsonse,refillFinishedProductsCredentials,refillFinishedProductsResponse,refillRawMaterialsResponse } from "./types/InventoryTypes.ts";
 import { createStockTransferCredentials,CreateStockTransferResponse } from "./types/InventoryTypes.ts";
+import { quantityAdjustmentCredentials,LiveQuantityAdjustmentResponse } from "./types/InventoryTypes.ts";
+import { listStockTransferFilterCredentials,listStockTransferResponse } from "./types/InventoryTypes.ts";
+import { movementReportFilterCredentials,movementReportResponse } from "./types/InventoryTypes.ts";
 /**
  * Lists the page already has, used to turn ids from the API into the labels
  * the register shows. Categories and units are { value, label } option lists
@@ -138,6 +141,38 @@ export default class InventoryApi extends BaseApi {
       method: "POST",
       auth: true,
       body: d,
+    });
+    return data;
+  }
+
+    /** GET the waybill PDF from the waybillUrl the transfer response returned. */
+  async fetchWaybillPdf(waybillUrl: string) {
+    return this.requestBlob(waybillUrl);
+  }
+
+  async createQuantityAdjustment(d: quantityAdjustmentCredentials) {
+    const data = await this.request<LiveQuantityAdjustmentResponse>("/quantity-adjustments", {
+      method: "POST",
+      auth: true,
+      body: d,
+    });
+    return data;
+  }
+
+  async listStockTransfers(d: listStockTransferFilterCredentials) {
+    const data = await this.request<listStockTransferResponse>("/stock/transfers", {
+      method: "GET",
+      auth: true,
+      query: d,
+    });
+    return data;
+  }
+
+  async listMovementReports(d: movementReportFilterCredentials) {
+    const data = await this.request<movementReportResponse>("/stock/movement-report", {
+      method: "GET",
+      auth: true,
+      query: d,
     });
     return data;
   }
