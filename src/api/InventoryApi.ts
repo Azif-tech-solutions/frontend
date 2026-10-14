@@ -7,7 +7,8 @@ import { createStockTransferCredentials,CreateStockTransferResponse } from "./ty
 import { quantityAdjustmentCredentials,LiveQuantityAdjustmentResponse } from "./types/InventoryTypes.ts";
 import { listStockTransferFilterCredentials,listStockTransferResponse } from "./types/InventoryTypes.ts";
 import { movementReportFilterCredentials,movementReportResponse } from "./types/InventoryTypes.ts";
-import { groupCardFilterCredentials,StockLedgerResponse } from "./types/InventoryTypes.ts";
+import { groupCardFilterCredentials,StockLedgerResponse,StockBinLedgerResponse } from "./types/InventoryTypes.ts";
+import { StockAndGroupBinCardFilterCredentials,StockLedgerCardSingleProductResponse,BinLedgerSingleProductResponse } from "./types/InventoryTypes.ts";
 /**
  * Lists the page already has, used to turn ids from the API into the labels
  * the register shows. Categories and units are { value, label } option lists
@@ -179,11 +180,38 @@ export default class InventoryApi extends BaseApi {
   }
 
   async listStockLedger(d: groupCardFilterCredentials) {
-    const data = await this.request<StockLedgerResponse>("/stock/ledger", {
+    const data = await this.request<StockLedgerResponse>("/stock/group-card", {
       method: "GET",
       auth: true,
       query: d,
     });
     return data;
   }
+  async listStockBinLedger(d: groupCardFilterCredentials) {
+    const data = await this.request<StockBinLedgerResponse>("/stock/group-bin-card", {
+      method: "GET",
+      auth: true,
+      query: d,
+    });
+    return data;
+  }
+
+  async listStockAndGroupBinLedgerForSingleItem(resource:string="bin",itemId:string,d: StockAndGroupBinCardFilterCredentials) {
+    if(resource==="bin"){
+      
+    const data = await this.request<BinLedgerSingleProductResponse>(`/stock/bin-card/${itemId}`, {
+      method: "GET",
+      auth: true,
+      query: d,
+    });
+    return data;
+  }else{
+const data = await this.request<BinLedgerSingleProductResponse>(`/stock/card/${itemId}`, {
+      method: "GET",
+      auth: true,
+      query: d,
+    });
+    return data;
+  }
+}
 }

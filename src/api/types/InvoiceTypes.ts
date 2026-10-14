@@ -11,5 +11,3 @@ export interface StateListResponse{
     data:state[];
 }
 
-
-

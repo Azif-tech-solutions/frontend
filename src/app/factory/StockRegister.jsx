@@ -721,13 +721,13 @@ function RegisterForm({ kind, onBack, crumbs, onDone, onGoToFactories, onGoToCat
           {isRaw ? (
             <>
               <Input label="Shelf life (days)" type="number" value={extraA} onChange={(e) => setExtraA(e.target.value)} placeholder="0" />
-              <Input label="Standard unit cost (₦)" type="number" value={extraB} onChange={(e) => setExtraB(e.target.value)} placeholder="0.00" />
-              <Input label="Safety stock buffer" type="number" value={extraC} onChange={(e) => setExtraC(e.target.value)} placeholder="0" />
+              <Input label="Standard unit cost/Landing  cost (₦)" type="number" value={extraC} onChange={(e) => setExtraC(e.target.value)} placeholder="0.00" />
+              <Input label="Safety stock buffer / Mark up cost (₦)"  type="number" value={extraB} onChange={(e) => setExtraB(e.target.value)} placeholder="0" />
             </>
           ) : (
             <>
               <Input label="Pack size" value={extraA} onChange={(e) => setExtraA(e.target.value)} placeholder="e.g. 12 × 50cl" />
-              <Input label="Standard selling price (₦)" type="number" value={extraB} onChange={(e) => setExtraB(e.target.value)} placeholder="0.00" />
+              <Input label="Standard selling price/Mark up price (₦)" type="number" value={extraB} onChange={(e) => setExtraB(e.target.value)} placeholder="0.00" />
               <Input label="Landing cost cap (₦)" type="number" value={extraC} onChange={(e) => setExtraC(e.target.value)} placeholder="0.00" />
             </>
           )}

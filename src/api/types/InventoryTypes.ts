@@ -327,3 +327,78 @@ export interface StockLedgerResponseData {
 export interface StockLedgerResponse {
   data: StockLedgerResponseData;
 }
+
+
+
+export interface StockBinLedgerMember {
+  stockItemId: string;
+  code: string;
+  name: string;
+  unit: string;
+}
+
+export interface StockBinLedgerHeader {
+  groupType: string;
+  groupId: string;
+  groupName: string;
+  members: StockBinLedgerMember[];
+  openingBalance: number;
+  totalReceived: number;
+  totalIssued: number;
+  closingBalance: number;
+}
+
+export interface StockBinLedgerRow {
+  sn: number;
+  date: string;
+  qtyIn: number;
+  qtyOut: number;
+  balance: number;
+}
+
+export interface StockBinLedgerResponseData {
+  header: StockBinLedgerHeader;
+  rows: StockBinLedgerRow[];
+}
+
+export interface StockBinLedgerResponse {
+  data: StockBinLedgerResponseData;
+}
+
+
+export interface StockAndGroupBinCardFilterCredentials{
+
+  locationId: string;
+  includeAreas: boolean;//default to true
+
+  from?:string;//date
+  to?:string;//date
+
+}
+
+export interface StockLedgerCardSingleProductResponseData{
+sn: number;
+      date: string;
+      remark: string;
+      qtyIn: number;
+      qtyOut: number;
+      runningBalance: number;
+}
+
+export interface StockLedgerCardSingleProductResponse {
+  data: StockLedgerCardSingleProductResponseData[];
+}
+
+
+export interface BinLedgerSingleProductResponseData{
+ 
+      sn: number;
+      date: string;
+      qtyIn: number;
+      qtyOut: number;
+      balance: number;
+    
+}
+export interface BinLedgerSingleProductResponse {
+  data: BinLedgerSingleProductResponseData[];
+}
