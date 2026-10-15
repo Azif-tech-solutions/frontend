@@ -14,6 +14,7 @@ import { fmt, money, moneyShort, fmtDate } from '../utils.js'
 import InventoryApi from '../../api/InventoryApi.js'
 
 const inventoryApi = new InventoryApi()
+const PAGE_SIZE = 50
 
 const TABS = [
   { value: 'finished', label: 'Finished products', icon: 'package' },
@@ -25,11 +26,18 @@ const SUB_TABS = [
   { value: 'supplied', label: 'Supplied Report' },
 ]
 
+const SOURCE_TYPES = [
+  { value: '', label: 'All sources' },
+  { value: 'REFILL', label: 'Refill' },
+  { value: 'TRANSFER_OUT', label: 'Transfer out' },
+  { value: 'QUANTITY_ADJUSTMENT', label: 'Quantity adjustment' },
+]
+
 const ALL = { value: '', label: 'All' }
-const EMPTY_FILTERS = { factory: '', item: '', destination: '', from: '', to: '' }
+const EMPTY_FILTERS = { factory: '', item: '', destination: '', sourceType: '', from: '', to: '' }
 
 /* ------------------------------------------------------------------ */
-/* Data loading: each view is built from different endpoints          */
+/* Data loading                                                        */
 /* ------------------------------------------------------------------ */
 
 const showDate = (d) => {
@@ -37,13 +45,40 @@ const showDate = (d) => {
   return t ? fmtDate(new Date(t).toISOString()) : '—'
 }
 
-// Every endpoint here wants a location, so "all factories" means one request per factory.
-// Stock items give each view its names, landing costs, selling prices and balances.
+// Load every page of stock items for the given factories + item type.
 async function loadItems(targets, itemType) {
-  const responses = await Promise.all(targets.map((f) => inventoryApi.listStockItems(f.id, itemType)))
   const byId = {}
-  responses.forEach((res) => (res.data || []).forEach((item) => { byId[item.id] = item }))
+  await Promise.all(targets.map(async (f) => {
+    let page = 0
+    let hasMore = true
+    while (hasMore) {
+      const res = await inventoryApi.listStockItems(f.id, itemType, { page, size: PAGE_SIZE })
+      const pageItems = res.data?.items ?? res.data ?? []
+      pageItems.forEach((item) => { byId[item.id] = item })
+      hasMore = res.data?.totalPages != null
+        ? (res.data.page + 1) < res.data.totalPages
+        : pageItems.length === PAGE_SIZE
+      page++
+    }
+  }))
   return byId
+}
+
+// Load every page of a paged list endpoint.
+async function loadAllPages(fetcher) {
+  let page = 0
+  let all = []
+  let hasMore = true
+  while (hasMore) {
+    const res = await fetcher(page)
+    const pageItems = res.data?.items ?? res.data ?? []
+    all = [...all, ...pageItems]
+    hasMore = res.data?.totalPages != null
+      ? (res.data.page + 1) < res.data.totalPages
+      : pageItems.length === PAGE_SIZE
+    page++
+  }
+  return all
 }
 
 /**
@@ -51,32 +86,40 @@ async function loadItems(targets, itemType) {
  * Landing cost comes from the stock item.
  */
 async function loadProduction(targets, a) {
-  const [items, reports] = await Promise.all([
+  const [items, movements] = await Promise.all([
     loadItems(targets, 'FINISHED_PRODUCT'),
-    Promise.all(targets.map((f) => inventoryApi.listMovementReports({
-      locationId: f.id,
-      stockItemId: a.item || undefined,
-      sourceType: 'REFILL',
-      from: a.from || undefined,
-      to: a.to || undefined,
-    }))),
+    Promise.all(targets.map((f) =>
+      loadAllPages((page) => inventoryApi.listMovementReports({
+        locationId: f.id,
+        stockItemId: a.item || undefined,
+        sourceType: a.sourceType || 'REFILL',
+        from: a.from || undefined,
+        to: a.to || undefined,
+        page,
+        size: PAGE_SIZE,
+      }))
+    )),
   ])
 
-  return reports
-    .flatMap((res) => res.data || [])
-    .filter((m) => items[m.stockItemId] && Number(m.qtyIn) > 0) // finished products only, entries that added stock
+  return movements
+    .flat()
+    .filter((m) => {
+      const id = m.stockItem?.id ?? m.stockItemId
+      return items[id] && Number(m.qtyIn) > 0
+    })
     .map((m) => {
-      const item = items[m.stockItemId]
+      const id = m.stockItem?.id ?? m.stockItemId
+      const item = items[id]
       const qty = Number(m.qtyIn)
       const unitCost = Number(item.landingCost ?? 0)
       return {
         date: showDate(m.date),
         batch: m.sourceReference || '—',
-        product: m.itemName || item.name,
+        product: m.stockItem?.name || m.itemName || item.name,
         qty,
         unitCost,
         totalCost: qty * unitCost,
-        materials: '—', // no endpoint reports the raw materials a run consumed yet
+        materials: '—',
         when: Date.parse(m.date) || 0,
       }
     })
@@ -90,34 +133,44 @@ async function loadProduction(targets, a) {
 async function loadSupplied(targets, a) {
   const [items, responses] = await Promise.all([
     loadItems(targets, 'FINISHED_PRODUCT'),
-    Promise.all(targets.map((f) => inventoryApi.listStockTransfers({
-      locationId: f.id,
-      from: a.from || undefined,
-      to: a.to || undefined,
-    }))),
+    Promise.all(targets.map((f) =>
+      loadAllPages((page) => inventoryApi.listStockTransfers({
+        locationId: f.id,
+        from: a.from || undefined,
+        to: a.to || undefined,
+        page,
+        size: PAGE_SIZE,
+      }))
+    )),
   ])
 
   // A transfer can come back under both its source and destination factory, so keep one copy of each.
   const transfers = new Map()
-  responses.forEach((res) => (res.data || []).forEach((t) => transfers.set(t.id, t)))
+  responses.flat().forEach((t) => transfers.set(t.id, t))
 
   return [...transfers.values()]
     .flatMap((t) =>
       (t.lines || [])
-        .filter((l) => !a.item || l.stockItemId === a.item)
-        .map((l) => ({
-          waybill: t.waybillRef || '—',
-          driver: t.driverName || '—',
-          destination: t.destinationLocationName || '—',
-          supplied: showDate(t.transferDate),
-          received: t.receivedDate ? showDate(t.receivedDate) : '—',
-          product: l.stockItemName,
-          qtySupplied: Number(l.qtySent ?? 0),
-          qtyReceived: Number(l.qtyReceived ?? 0),
-          qtyRejected: Number(l.qtyRejected ?? 0),
-          price: Number(items[l.stockItemId]?.markupCost ?? 0),
-          when: Date.parse(t.transferDate) || 0,
-        }))
+        .filter((l) => {
+          const id = l.stockItem?.id ?? l.stockItemId
+          return !a.item || id === a.item
+        })
+        .map((l) => {
+          const id = l.stockItem?.id ?? l.stockItemId
+          return {
+            waybill: t.waybillRef || '—',
+            driver: t.driver?.name || t.driverName || '—',
+            destination: t.destinationLocation?.name || t.destinationLocationName || '—',
+            supplied: showDate(t.transferDate),
+            received: t.receivedDate ? showDate(t.receivedDate) : '—',
+            product: l.stockItem?.name || l.stockItemName,
+            qtySupplied: Number(l.qtySent ?? 0),
+            qtyReceived: Number(l.qtyReceived ?? 0),
+            qtyRejected: Number(l.qtyRejected ?? 0),
+            price: Number(items[id]?.markupCost ?? 0),
+            when: Date.parse(t.transferDate) || 0,
+          }
+        })
     )
     .sort((x, y) => y.when - x.when)
 }
@@ -128,20 +181,26 @@ async function loadSupplied(targets, a) {
  * opening quantity is worked back from those.
  */
 async function loadRaw(targets, a) {
-  const [items, reports] = await Promise.all([
+  const [items, movements] = await Promise.all([
     loadItems(targets, 'RAW_MATERIAL'),
-    Promise.all(targets.map((f) => inventoryApi.listMovementReports({
-      locationId: f.id,
-      stockItemId: a.item || undefined,
-      from: a.from || undefined,
-      to: a.to || undefined,
-    }))),
+    Promise.all(targets.map((f) =>
+      loadAllPages((page) => inventoryApi.listMovementReports({
+        locationId: f.id,
+        stockItemId: a.item || undefined,
+        sourceType: a.sourceType || undefined,
+        from: a.from || undefined,
+        to: a.to || undefined,
+        page,
+        size: PAGE_SIZE,
+      }))
+    )),
   ])
 
   const totals = {}
-  reports.flatMap((res) => res.data || []).forEach((m) => {
-    if (!items[m.stockItemId]) return // raw materials only
-    const t = (totals[m.stockItemId] ??= { arrivals: 0, used: 0, totalIn: 0, first: 0 })
+  movements.flat().forEach((m) => {
+    const id = m.stockItem?.id ?? m.stockItemId
+    if (!items[id]) return
+    const t = (totals[id] ??= { arrivals: 0, used: 0, totalIn: 0, first: 0 })
     const when = Date.parse(m.date) || 0
     t.totalIn += Number(m.qtyIn) || 0
     t.used += Number(m.qtyOut) || 0
@@ -153,11 +212,11 @@ async function loadRaw(targets, a) {
     .filter((item) => !a.item || item.id === a.item)
     .map((item) => {
       const t = totals[item.id] || { arrivals: 0, used: 0, totalIn: 0, first: 0 }
-      const remaining = Number(item.quantity ?? 0)
+      const remaining = Number(item.quantity ?? item.quantityOnHand ?? 0)
       return {
         material: item.name,
         openingDate: a.from ? showDate(a.from) : t.first ? showDate(new Date(t.first).toISOString()) : '—',
-        opening: Math.max(0, remaining - t.totalIn + t.used), // balance at the start of the period
+        opening: Math.max(0, remaining - t.totalIn + t.used),
         used: t.used,
         unitCost: Number(item.markupCost ?? 0),
         remaining,
@@ -234,6 +293,7 @@ function buildView(viewKey, source) {
     }
   }
 
+  // Raw materials
   const rows = source.map((r) => ({ ...r, costUsed: r.used * r.unitCost, costRemaining: r.remaining * r.unitCost }))
   const costUsed = rows.reduce((n, r) => n + r.costUsed, 0)
   const costRemaining = rows.reduce((n, r) => n + r.costRemaining, 0)
@@ -280,6 +340,7 @@ export default function StockMovementReport({ leaf, moduleLabel, parentLabel }) 
   const viewKey = isFinished ? sub : 'raw'
 
   // The product / raw-material dropdown follows the factory picked in the filter bar.
+  // Loads every page under the hood.
   useEffect(() => {
     const targets = values.factory ? factories.filter((f) => f.id === values.factory) : factories
     if (!targets.length) { setItemOptions([]); return }
@@ -289,7 +350,7 @@ export default function StockMovementReport({ leaf, moduleLabel, parentLabel }) 
       .then((byId) => {
         if (!cancelled) setItemOptions(Object.values(byId).map((i) => ({ value: i.id, label: i.name })))
       })
-      .catch(() => { if (!cancelled) setItemOptions([]) }) // the report request reports real failures
+      .catch(() => { if (!cancelled) setItemOptions([]) })
     return () => { cancelled = true }
   }, [factories, values.factory, isFinished])
 
@@ -365,6 +426,10 @@ export default function StockMovementReport({ leaf, moduleLabel, parentLabel }) 
   const fields = [
     { key: 'factory', label: 'Factory', type: 'select', options: [ALL, ...factories.map((f) => ({ value: f.id, label: f.name }))], placeholder: 'All factories' },
     { key: 'item', label: isFinished ? 'Product' : 'Raw material', type: 'select', options: [ALL, ...itemOptions], placeholder: isFinished ? 'All products' : 'All materials' },
+    // sourceType only makes sense for production + raw (movement report)
+    ...(viewKey !== 'supplied'
+      ? [{ key: 'sourceType', label: 'Source type', type: 'select', options: SOURCE_TYPES, placeholder: 'All sources' }]
+      : []),
     ...(viewKey === 'supplied'
       ? [{ key: 'destination', label: 'Destination', type: 'select', options: [ALL, ...destinationOptions], placeholder: 'All destinations' }]
       : []),

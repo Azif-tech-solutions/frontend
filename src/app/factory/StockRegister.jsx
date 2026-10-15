@@ -492,6 +492,7 @@ const columns = [
   { key: 'unit', label: 'Unit', width: 110 },
   { key: 'reorder', label: 'Re-order level', width: 130, align: 'right', mono: true },
   { key: 'barcode', label: 'Barcode', width: 150, mono: true },
+  { key: 'quantityOnHand', label: 'Quantity on Hand', width: 130, align: 'right', mono: true },
   {
     key: 'status', label: 'Status', width: 110,
     render: (r) => <Badge tone={r.status === 'Active' ? 'success' : 'neutral'}>{r.status}</Badge>,
@@ -819,27 +820,45 @@ function RegisterForm({ kind, onBack, crumbs, onDone, onGoToFactories, onGoToCat
     </FormShell>
   )
 }
+const PAGE_SIZE = 20
 
 export default function StockRegister({ leaf, moduleLabel, parentLabel, onNavigate }) {
-  const { products, categories, factories, units, mergeProducts, showToast } = useStore()
+  const { categories, factories, units, showToast } = useStore()
   const [tab, setTab] = useState('finished')
   const [mode, setMode] = useState('list')
   const [loadingItems, setLoadingItems] = useState(false)
-  const [factoryFilter, setFactoryFilter] = useState('') // '' = all factories
+  const [factoryFilter, setFactoryFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('') // '' = all categories
+
+  // pagination + server search
+  const [page, setPage] = useState(0)
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [items, setItems] = useState([]) // raw API items for the current page
+  const [pageInfo, setPageInfo] = useState({ totalItems: 0, totalPages: 1 })
+
+  // One request is one location, so "All factories" can't be paginated.
+  // Fall back to the first factory.
+  const locationId = factoryFilter || factories[0]?.id || ''
 
   // Lookups are read through a ref, so a change to the unit or category lists
   // doesn't trigger a new request.
   const lookupsRef = useRef(null)
   lookupsRef.current = stockLookups(factories, categories, units)
 
-  // Ask the server for the items. The endpoint takes a location and an item
-  // type, so: the picked factory (or every factory when none is picked) for the
-  // current tab's item type. Runs again when the factory filter or tab changes.
+  // Wait for the user to stop typing; a new search always starts at page 0.
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search.trim()); setPage(0) }, 350)
+    return () => clearTimeout(t)
+  }, [search])
+
+  // Ask the server for ONE page. Runs again when the factory, tab, page,
+  // search text or refreshKey changes.
   // (This sits above the early return below so the hook order never changes.)
   useEffect(() => {
-    const targets = factoryFilter ? factories.filter((f) => f.id === factoryFilter) : factories
-    if (!targets.length) {
+    if (!locationId) {
+      setItems([])
       setLoadingItems(false)
       return
     }
@@ -847,25 +866,22 @@ export default function StockRegister({ leaf, moduleLabel, parentLabel, onNaviga
     let cancelled = false
     setLoadingItems(true)
 
-    Promise.all(targets.map((f) => inventoryApi.listStockItems(f.id, TAB_ITEM_TYPE[tab])))
-      .then((responses) => {
+    inventoryApi
+      .listStockItems(locationId, TAB_ITEM_TYPE[tab], { page, size: PAGE_SIZE, q: debouncedSearch })
+      .then((res) => {
         if (cancelled) return
-        const items = responses.flatMap((res) => res.data || [])
-        // Replace only the slice just requested (these factories, this tab's
-        // kind), so the rest of the store isn't wiped by a filtered request.
-        mergeProducts(
-          { factoryIds: targets.map((f) => f.id), kinds: [tab] },
-          items.map((item) => inventoryApi.toStoreProduct(item, lookupsRef.current))
-        )
+        const d = res.data
+        setItems(d.items ?? [])
+        setPageInfo({ totalItems: d.totalItems ?? 0, totalPages: d.totalPages ?? 1 })
       })
       .catch((error) => {
-        // Keep whatever is already in the store if any of the requests failed.
+        // Keep whatever is already showing if the request failed.
         if (!cancelled) showToast('Could not load stock items', error.message, true)
       })
       .finally(() => { if (!cancelled) setLoadingItems(false) })
 
     return () => { cancelled = true }
-  }, [factories, factoryFilter, tab, mergeProducts, showToast])
+  }, [locationId, tab, page, debouncedSearch, refreshKey, showToast])
 
   const crumbs = [moduleLabel, parentLabel, leaf?.label].filter(Boolean)
   const goToFactories = () => onNavigate?.({ id: 'f.factories', view: 'factories', label: 'Factories' })
@@ -876,19 +892,17 @@ export default function StockRegister({ leaf, moduleLabel, parentLabel, onNaviga
         kind={tab}
         crumbs={crumbs}
         onBack={() => setMode('list')}
-        onDone={() => setMode('list')}
+        onDone={() => { setMode('list'); setRefreshKey((k) => k + 1) }} // refetch so the new item shows
         onGoToFactories={goToFactories}
         onGoToCategories={goToCategories}
       />
     )
   }
 
-  // The factory filter also refreshes from the server (see the effect above), but
-  // the store holds other factories' items too, so the view is narrowed here.
-  // The endpoint can't filter by category, so that one is purely local.
-  const own = products
-    .filter((p) => (tab === 'finished' ? p.kind !== 'raw' : p.kind === 'raw'))
-    .filter((p) => !factoryFilter || p.factoryId === factoryFilter)
+  // The endpoint can't filter by category, so that one stays local
+  // (it only narrows the page that is currently loaded).
+  const own = items
+    .map((item) => inventoryApi.toStoreProduct(item, lookupsRef.current))
     .filter((p) => !categoryFilter || p.categoryId === categoryFilter)
     .map((p) => ({
       code: p.code || '—',
@@ -899,8 +913,8 @@ export default function StockRegister({ leaf, moduleLabel, parentLabel, onNaviga
       reorder: p.reorder || '—',
       barcode: p.barcode || '—',
       status: p.status || 'Active',
+      quantityOnHand: p.quantity || '—',
     }))
-    .reverse()
 
   const rows = [...own]
   const label = tab === 'finished' ? 'product' : 'material'
@@ -916,16 +930,17 @@ export default function StockRegister({ leaf, moduleLabel, parentLabel, onNaviga
       onCreate={() => setMode('create')}
       tabs={TABS}
       tab={tab}
-      onTabChange={setTab}
-      searchPlaceholder={`Search ${label}s by code, name or barcode…`}
-      searchKeys={['code', 'name', 'barcode']}
+      onTabChange={(t) => { setTab(t); setPage(0) }}
+      searchPlaceholder={`Search ${label}s by name…`}
+      search={search}
+      onSearch={setSearch}
       filters={
         <>
           <Select
-            options={[{ label: 'All factories', value: '' }, ...factories.map((f) => ({ label: f.name, value: f.id }))]}
-            value={factoryFilter}
-            onChange={(e) => setFactoryFilter(e.target.value)}
-            placeholder="All factories"
+            options={factories.map((f) => ({ label: f.name, value: f.id }))}
+            value={locationId}
+            onChange={(e) => { setFactoryFilter(e.target.value); setPage(0) }}
+            placeholder="Select factory…"
             style={{ width: 190 }}
           />
           <Select
@@ -938,13 +953,20 @@ export default function StockRegister({ leaf, moduleLabel, parentLabel, onNaviga
         </>
       }
       stats={[
-        { label: `${tab === 'finished' ? 'Products' : 'Materials'} registered`, value: String(rows.length) },
+        { label: `${tab === 'finished' ? 'Products' : 'Materials'} registered`, value: String(pageInfo.totalItems) },
         { label: 'Active', value: String(rows.filter((r) => r.status === 'Active').length) },
         { label: 'Factories covered', value: String(new Set(rows.map((r) => r.factory)).size) },
         { label: 'Barcoded', value: `${rows.filter((r) => r.barcode).length}/${rows.length}` },
       ]}
       columns={columns}
       rows={rows}
+      pagination={{
+        page,
+        pageCount: pageInfo.totalPages,
+        pageSize: PAGE_SIZE,
+        total: pageInfo.totalItems,
+        onPage: setPage,
+      }}
       onRowClick={() => {}}
       emptyTitle={`No ${label}s registered`}
       emptyDescription={`Register a ${label} to make it selectable in Stock Refill, Transfers and production.`}

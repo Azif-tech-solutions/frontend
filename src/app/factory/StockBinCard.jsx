@@ -11,6 +11,7 @@ import { fmtDate } from '../utils.js'
 import InventoryApi from '../../api/InventoryApi.js'
 
 const inventoryApi = new InventoryApi()
+const PAGE_SIZE = 20
 
 const num = (n) => (n ? Number(n).toLocaleString() : '—')
 const emptyFilters = { factory: '', itemType: '', item: '', from: '', to: '' }
@@ -20,7 +21,6 @@ const MODES = [
   { value: 'bin', label: 'Bin Card', icon: 'layers' },
 ]
 
-// Stock types: the label shown in the filter, and the itemType the API expects.
 const KINDS = [
   { value: 'finished', label: 'Finished product', itemType: 'FINISHED_PRODUCT', tone: 'success' },
   { value: 'raw', label: 'Raw material', itemType: 'RAW_MATERIAL', tone: 'warning' },
@@ -32,44 +32,69 @@ export default function StockBinCard({ leaf, moduleLabel, parentLabel }) {
 
   const [mode, setMode] = useState('stock')
   const [filters, setFilters] = useState(emptyFilters)
-  const [items, setItems] = useState([]) // products for the chosen factory + stock type
+  const [items, setItems] = useState([])
   const [itemsLoading, setItemsLoading] = useState(false)
-  const [rows, setRows] = useState(null) // null until generated
-  const [shown, setShown] = useState(null) // { item, factory, from, to } the current report was run for
+  const [paged, setPaged] = useState(null)   // Paged response from the API
+  const [shown, setShown] = useState(null)   // { item, factory, from, to }
   const [loading, setLoading] = useState(false)
+  const [page, setPage] = useState(0)
   const isStock = mode === 'stock'
 
-  // Name lookups for toStoreProduct, read through a ref so list changes don't re-request.
   const lookupsRef = useRef(null)
   lookupsRef.current = { factories, categories: categoryOptions(categories), units: unitOptions(units) }
 
-  // Load the products whenever the factory or stock type changes.
+  // Load products (paginated under the hood) — already done earlier
   useEffect(() => {
     const itemType = KINDS.find((k) => k.value === filters.itemType)?.itemType
-    if (!filters.factory || !itemType) { setItems([]); return }
+    if (!filters.factory || !itemType) {
+      setItems([])
+      return
+    }
 
     let cancelled = false
     setItemsLoading(true)
-    inventoryApi.listStockItems(filters.factory, itemType)
-      .then(({ data }) => {
-        if (cancelled) return
-        setItems((data || []).map((i) => inventoryApi.toStoreProduct(i, lookupsRef.current)))
-      })
+
+    const loadAllProducts = async () => {
+      let page = 0
+      let all = []
+      let hasMore = true
+
+      while (hasMore && !cancelled) {
+        const { data } = await inventoryApi.listStockItems(filters.factory, itemType, {
+          page,
+          size: 50,
+        })
+        const pageItems = data?.items ?? data ?? []
+        const mapped = pageItems.map((i) =>
+          inventoryApi.toStoreProduct(i, lookupsRef.current)
+        )
+        all = [...all, ...mapped]
+        hasMore = data?.totalPages != null
+          ? (data.page + 1) < data.totalPages
+          : pageItems.length === 50
+        page++
+      }
+      if (!cancelled) setItems(all)
+    }
+
+    loadAllProducts()
       .catch((error) => {
         if (!cancelled) showToast('Could not load products', error.message, true)
       })
-      .finally(() => { if (!cancelled) setItemsLoading(false) })
+      .finally(() => {
+        if (!cancelled) setItemsLoading(false)
+      })
 
     return () => { cancelled = true }
   }, [filters.factory, filters.itemType, showToast])
 
-  // The product list depends on factory and stock type, so changing either clears the product.
   const onFilterChange = (key, value) => {
     setFilters((f) => ({
       ...f,
       [key]: value,
       ...(key === 'factory' || key === 'itemType' ? { item: '' } : {}),
     }))
+    if (key !== 'from' && key !== 'to') setPage(0)
   }
 
   const filterFields = [
@@ -84,18 +109,25 @@ export default function StockBinCard({ leaf, moduleLabel, parentLabel }) {
     { key: 'to', label: 'Date to', type: 'date' },
   ]
 
-  // Fetch one card for the given mode and parameters.
-  const run = async (m, p) => {
+  const run = async (m, p, nextPage = 0) => {
     setLoading(true)
     try {
-      const res = await inventoryApi.listStockAndGroupBinLedgerForSingleItem(m === 'bin' ? 'bin' : 'card', p.item.id, {
-        locationId: p.factory,
-        includeAreas: true,
-        from: p.from || undefined,
-        to: p.to || undefined,
-      })
-      setRows(res.data || [])
+      const res = await inventoryApi.listStockAndGroupBinLedgerForSingleItem(
+        m === 'bin' ? 'bin' : 'card',
+        p.item.id,
+        {
+          locationId: p.factory,
+          includeAreas: true,
+          from: p.from || undefined,
+          to: p.to || undefined,
+          page: nextPage,
+          size: PAGE_SIZE,
+        }
+      )
+      // res.data is now the Paged object
+      setPaged(res.data)
       setShown(p)
+      setPage(nextPage)
     } catch (error) {
       showToast('Could not generate report', error.message, true)
     } finally {
@@ -116,35 +148,33 @@ export default function StockBinCard({ leaf, moduleLabel, parentLabel }) {
       factory: filters.factory,
       from: filters.from,
       to: filters.to,
-    })
+    }, 0)
   }
 
-  // Switching between Stock Card and Bin Card re-runs the report that was last generated.
   const changeMode = (m) => {
     setMode(m)
-    if (shown) run(m, shown)
+    if (shown) run(m, shown, 0)   // re-run from page 0 when switching mode
   }
 
   const reset = () => {
     setFilters(emptyFilters)
     setItems([])
-    setRows(null)
+    setPaged(null)
     setShown(null)
+    setPage(0)
   }
 
-  // The balance column is `runningBalance` on the stock card and `balance` on the bin card.
   const balanceKey = isStock ? 'runningBalance' : 'balance'
-  const data = rows || []
+  const data = paged?.items ?? []
   const totalIn = data.reduce((n, r) => n + (Number(r.qtyIn) || 0), 0)
   const totalOut = data.reduce((n, r) => n + (Number(r.qtyOut) || 0), 0)
   const first = data[0]
   const last = data[data.length - 1]
-  // The endpoint returns rows only, so closing is the last balance and
-  // opening is worked back from the first row.
   const closing = last ? Number(last[balanceKey]) || 0 : 0
-  const opening = first ? (Number(first[balanceKey]) || 0) - (Number(first.qtyIn) || 0) + (Number(first.qtyOut) || 0) : 0
+  const opening = first
+    ? (Number(first[balanceKey]) || 0) - (Number(first.qtyIn) || 0) + (Number(first.qtyOut) || 0)
+    : 0
 
-  // Dates are formatted here so the table and the export both show the same text.
   const tableRows = data.map((r) => ({ ...r, date: r.date ? fmtDate(r.date) : '—' }))
 
   const columns = [
@@ -156,14 +186,14 @@ export default function StockBinCard({ leaf, moduleLabel, parentLabel }) {
     { key: balanceKey, label: isStock ? 'Qty remain' : 'Balance', width: isStock ? 130 : 170, align: 'right', mono: true, render: (r) => num(r[balanceKey]) },
   ]
 
-  const stats = rows ? [
+  const stats = paged ? [
     { label: 'Opening balance', value: opening.toLocaleString(), hint: shown?.from ? fmtDate(shown.from) : undefined },
     { label: 'Total qty in', value: totalIn.toLocaleString() },
     { label: 'Total qty out', value: totalOut.toLocaleString(), tone: 'negative' },
     { label: 'Closing balance', value: closing.toLocaleString(), hint: shown?.to ? fmtDate(shown.to) : undefined },
   ] : undefined
 
-  const totals = rows
+  const totals = paged
     ? { sn: 'Total', qtyIn: totalIn.toLocaleString(), qtyOut: totalOut.toLocaleString(), [balanceKey]: closing.toLocaleString() }
     : undefined
 
@@ -194,10 +224,17 @@ export default function StockBinCard({ leaf, moduleLabel, parentLabel }) {
         columns={columns}
         rows={tableRows}
         totals={totals}
+        pagination={paged ? {
+          page: paged.page ?? page,
+          pageCount: paged.totalPages ?? 1,
+          pageSize: PAGE_SIZE,
+          total: paged.totalItems ?? 0,
+          onPage: (p) => shown && run(mode, shown, p),
+        } : undefined}
         tableTitle={`${isStock ? 'Product activity' : 'Daily movement summary'}${item ? ` — ${item.name}` : ''}`}
         tableActions={<Segmented options={MODES} value={mode} onChange={changeMode} size="sm" />}
-        emptyTitle={rows ? 'No activity for this item in the selected period' : 'Choose a product to begin'}
-        emptyDescription={rows
+        emptyTitle={paged ? 'No activity for this item in the selected period' : 'Choose a product to begin'}
+        emptyDescription={paged
           ? 'Widen the date range or choose a different product, then generate again.'
           : 'Select a factory, stock type and product (and optionally dates), then click Generate.'}
         footnote="Report data reflects the underlying transactional records at the moment of generation."

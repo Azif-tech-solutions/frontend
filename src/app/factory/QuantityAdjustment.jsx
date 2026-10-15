@@ -53,28 +53,57 @@ export default function QuantityAdjustment({ leaf, moduleLabel, parentLabel }) {
   lookupsRef.current = { factories, categories: categoryOptions(categories), units: unitOptions(units) }
 
   // Load both item types for the chosen factory.
-  useEffect(() => {
-    if (!factoryId) { setItems([]); return }
+// Load both item types for the chosen factory (paginated under the hood).
+useEffect(() => {
+  if (!factoryId) {
+    setItems([])
+    return
+  }
 
-    let cancelled = false
-    setItemsLoading(true)
-    Promise.all([
-      inventoryApi.listStockItems(factoryId, 'FINISHED_PRODUCT'),
-      inventoryApi.listStockItems(factoryId, 'RAW_MATERIAL'),
-    ])
-      .then(([fin, raw]) => {
-        if (cancelled) return
-        const all = [...(fin.data || []), ...(raw.data || [])]
-        setItems(all.map((i) => inventoryApi.toStoreProduct(i, lookupsRef.current)))
+  let cancelled = false
+  setItemsLoading(true)
+
+  const loadAllOfType = async (itemType) => {
+    let page = 0
+    let all = []
+    let hasMore = true
+
+    while (hasMore && !cancelled) {
+      const { data } = await inventoryApi.listStockItems(factoryId, itemType, {
+        page,
+        size: 50,
       })
-      .catch((error) => {
-        if (!cancelled) showToast('Could not load items', error.message, true)
-      })
-      .finally(() => { if (!cancelled) setItemsLoading(false) })
 
-    return () => { cancelled = true }
-  }, [factoryId, reloadKey, showToast])
+      const pageItems = data?.items ?? data ?? []
+      all = [...all, ...pageItems]
+      hasMore = data?.totalPages != null
+        ? (data.page + 1) < data.totalPages
+        : pageItems.length === 50
 
+      page++
+    }
+
+    return all
+  }
+
+  Promise.all([
+    loadAllOfType('FINISHED_PRODUCT'),
+    loadAllOfType('RAW_MATERIAL'),
+  ])
+    .then(([fin, raw]) => {
+      if (cancelled) return
+      const all = [...fin, ...raw]
+      setItems(all.map((i) => inventoryApi.toStoreProduct(i, lookupsRef.current)))
+    })
+    .catch((error) => {
+      if (!cancelled) showToast('Could not load items', error.message, true)
+    })
+    .finally(() => {
+      if (!cancelled) setItemsLoading(false)
+    })
+
+  return () => { cancelled = true }
+}, [factoryId, reloadKey, showToast])
   // The item list belongs to one factory, so a new factory clears the old list
   // and any item already picked on the lines.
   const changeFactory = (id) => {

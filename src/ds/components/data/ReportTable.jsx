@@ -7,19 +7,48 @@ import { Pager } from './Pager.jsx';
  * columns: { key, label, align?: 'left'|'right'|'center', width?, mono?, render?(row), sortable? }
  * totals:  optional object keyed like a row, rendered as a bold summary band.
  */
+// export function ReportTable({
+//   columns = [], rows = [], totals, rowKey = (_, i) => i,
+//   onRowClick, dense = false, stickyHeader = true, emptyLabel = 'No records', pageSize = 10, style,
+// }) {
+//   const [hover, setHover] = useState(null);
+//   const [sort, setSort] = useState(null);
+//   const [rawPage, setPage] = useState(0);
+
+//   const pageCount = Math.max(1, Math.ceil(rows.length / (pageSize || rows.length || 1)));
+//   const page = Math.min(rawPage, pageCount - 1); // clamp when rows shrink (filtering)
+//   const start = pageSize ? page * pageSize : 0;
+//   const visible = pageSize ? rows.slice(start, start + pageSize) : rows;
 export function ReportTable({
   columns = [], rows = [], totals, rowKey = (_, i) => i,
   onRowClick, dense = false, stickyHeader = true, emptyLabel = 'No records', pageSize = 10, style,
+  pagination, // server-side: { page, pageCount, pageSize, total, onPage }
 }) {
   const [hover, setHover] = useState(null);
   const [sort, setSort] = useState(null);
   const [rawPage, setPage] = useState(0);
 
-  const pageCount = Math.max(1, Math.ceil(rows.length / (pageSize || rows.length || 1)));
-  const page = Math.min(rawPage, pageCount - 1); // clamp when rows shrink (filtering)
-  const start = pageSize ? page * pageSize : 0;
-  const visible = pageSize ? rows.slice(start, start + pageSize) : rows;
+  const server = !!pagination;
+  let page, pageCount, start, end, total, visible, onPage;
 
+  if (server) {
+    page = pagination.page;
+    pageCount = Math.max(1, pagination.pageCount);
+    start = page * pagination.pageSize;
+    end = start + rows.length;
+    total = pagination.total;
+    visible = rows;               // the server already sliced it
+    onPage = pagination.onPage;
+  } else {
+    pageCount = Math.max(1, Math.ceil(rows.length / (pageSize || rows.length || 1)));
+    page = Math.min(rawPage, pageCount - 1);
+    start = pageSize ? page * pageSize : 0;
+    end = Math.min(start + (pageSize || rows.length), rows.length);
+    total = rows.length;
+    visible = pageSize ? rows.slice(start, start + pageSize) : rows;
+    onPage = setPage;
+  }
+  // ...rest unchanged
   const h = dense ? 34 : 40;
   const cell = (c) => ({
     padding: dense ? '0 10px' : '0 14px',
@@ -123,7 +152,8 @@ export function ReportTable({
           )}
         </table>
       </div>
-      <Pager page={page} pageCount={pageCount} start={start} end={Math.min(start + (pageSize || rows.length), rows.length)} total={rows.length} onPage={setPage} />
+      <Pager page={page} pageCount={pageCount} start={start} end={end} total={total} onPage={onPage} />
+      {/* <Pager page={page} pageCount={pageCount} start={start} end={Math.min(start + (pageSize || rows.length), rows.length)} total={rows.length} onPage={setPage} /> */}
     </div>
   );
 }

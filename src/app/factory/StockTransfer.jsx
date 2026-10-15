@@ -243,34 +243,86 @@ export default function StockTransfer({ leaf, moduleLabel, parentLabel }) {
   lookupsRef.current = { factories, categories: categoryOptions(categories), units: unitOptions(units) }
 
   // Load drivers once.
-  useEffect(() => {
-    let cancelled = false
-    inventoryApi.listDrivers()
-      .then(({ data }) => { if (!cancelled) setDrivers(data || []) })
-      .catch((error) => { if (!cancelled) showToast('Could not load drivers', error.message, true) })
-      .finally(() => { if (!cancelled) setDriversLoading(false) })
-    return () => { cancelled = true }
-  }, [showToast])
+  // Load all drivers (paginated under the hood)
+useEffect(() => {
+  let cancelled = false
+  setDriversLoading(true)
+
+  const loadAllDrivers = async () => {
+    let page = 0
+    let all = []
+    let hasMore = true
+
+    while (hasMore && !cancelled) {
+      const { data } = await inventoryApi.listDrivers({ page, size: 50 })
+      all = [...all, ...(data.items || [])]
+      hasMore = (data.page + 1) < data.totalPages
+      page++
+    }
+
+    if (!cancelled) setDrivers(all)
+  }
+
+  loadAllDrivers()
+    .catch((error) => {
+      if (!cancelled) showToast('Could not load drivers', error.message, true)
+    })
+    .finally(() => {
+      if (!cancelled) setDriversLoading(false)
+    })
+
+  return () => { cancelled = true }
+}, [showToast])
 
   // Load the finished products of the source factory.
-  useEffect(() => {
-    if (!sourceId) { setItems([]); return }
+  // Load finished products for the selected source (paginated under the hood)
+useEffect(() => {
+  if (!sourceId) {
+    setItems([])
+    return
+  }
 
-    let cancelled = false
-    setItemsLoading(true)
-    inventoryApi.listStockItems(sourceId, 'FINISHED_PRODUCT')
-      .then(({ data }) => {
-        if (cancelled) return
-        setItems((data || []).map((i) => inventoryApi.toStoreProduct(i, lookupsRef.current)))
+  let cancelled = false
+  setItemsLoading(true)
+
+  const loadAllProducts = async () => {
+    let page = 0
+    let all = []
+    let hasMore = true
+
+    while (hasMore && !cancelled) {
+      const { data } = await inventoryApi.listStockItems(sourceId, 'FINISHED_PRODUCT', {
+        page,
+        size: 80,          // adjust if you prefer smaller/larger chunks
       })
-      .catch((error) => {
-        if (!cancelled) showToast('Could not load products', error.message, true)
-      })
-      .finally(() => { if (!cancelled) setItemsLoading(false) })
 
-    return () => { cancelled = true }
-  }, [sourceId, reloadKey, showToast])
+      // Handle both possible response shapes safely
+      const pageItems = data?.items ?? data ?? []
+      const mapped = pageItems.map((i) =>
+        inventoryApi.toStoreProduct(i, lookupsRef.current)
+      )
 
+      all = [...all, ...mapped]
+      hasMore = data?.totalPages != null
+        ? (data.page + 1) < data.totalPages
+        : pageItems.length === 50   // fallback if totalPages is missing
+
+      page++
+    }
+
+    if (!cancelled) setItems(all)
+  }
+
+  loadAllProducts()
+    .catch((error) => {
+      if (!cancelled) showToast('Could not load products', error.message, true)
+    })
+    .finally(() => {
+      if (!cancelled) setItemsLoading(false)
+    })
+
+  return () => { cancelled = true }
+}, [sourceId, reloadKey, showToast])
   // The product list belongs to one factory, so a new source clears the old list
   // and any product already picked. The destination can't be the same factory.
   const changeSource = (id) => {

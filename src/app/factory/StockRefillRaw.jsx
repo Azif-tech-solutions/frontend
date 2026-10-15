@@ -68,22 +68,48 @@ export default function StockRefillRaw({ leaf, moduleLabel, parentLabel, onNavig
   lookupsRef.current = { factories, categories: categoryOptions(categories), units: unitOptions(units) }
 
   // Load the raw materials of the chosen factory.
-  useEffect(() => {
-    if (!factoryId) { setItems([]); return }
+// Load the raw materials of the chosen factory (paginated under the hood).
+useEffect(() => {
+  if (!factoryId) {
+    setItems([])
+    return
+  }
 
-    let cancelled = false
-    inventoryApi.listStockItems(factoryId, 'RAW_MATERIAL')
-      .then(({ data }) => {
-        if (cancelled) return
-        setItems((data || []).map((i) => inventoryApi.toStoreProduct(i, lookupsRef.current)))
+  let cancelled = false
+
+  const loadAllMaterials = async () => {
+    let page = 0
+    let all = []
+    let hasMore = true
+
+    while (hasMore && !cancelled) {
+      const { data } = await inventoryApi.listStockItems(factoryId, 'RAW_MATERIAL', {
+        page,
+        size: 50,
       })
-      .catch((error) => {
-        if (!cancelled) showToast('Could not load materials', error.message, true)
-      })
 
-    return () => { cancelled = true }
-  }, [factoryId, reloadKey, showToast])
+      const pageItems = data?.items ?? data ?? []
+      const mapped = pageItems.map((i) =>
+        inventoryApi.toStoreProduct(i, lookupsRef.current)
+      )
 
+      all = [...all, ...mapped]
+      hasMore = data?.totalPages != null
+        ? (data.page + 1) < data.totalPages
+        : pageItems.length === 50
+
+      page++
+    }
+
+    if (!cancelled) setItems(all)
+  }
+
+  loadAllMaterials().catch((error) => {
+    if (!cancelled) showToast('Could not load materials', error.message, true)
+  })
+
+  return () => { cancelled = true }
+}, [factoryId, reloadKey, showToast])
   // The material list belongs to one factory, so a new factory clears the old
   // list and any material already picked on the lines.
   const changeFactory = (id) => {

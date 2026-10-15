@@ -1,26 +1,71 @@
 //inventory type.ts
 
 export type ItemTypes = "FINISHED_PRODUCT" | "RAW_MATERIAL"
+export interface Paged<T> {
+  items: T[];
+  page: number;
+  size: number;
+  totalItems: number;
+  totalPages: number;
+  totalIsEstimate?: boolean;
+  facets?: unknown;
+  summary?: unknown;
+  meta?: unknown;
+}
 
-export interface StockItem {
-  id?: string;//returned upon creation
-  locationId: string;
+
+export interface StockItemLocation {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+}
+
+export interface StockItemCategory {
+  id: string;
+  name: string;
+  type: string;
+}
+
+export interface StockItemUnitOfMeasure {
+  id: string;
+  code: string;
+  name: string;
+  symbol: string;
+}
+
+export interface StockItemVatCategory {
+  id: string;
+  code: string;
+  name: string;
+  rate: number;
+}
+
+export interface StockItemSection {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface StockItemResponse {
+  id: string;
+  location: StockItemLocation;
   itemType: ItemTypes;
   code: string;
   name: string;
-  categoryId: string;
+  category?: StockItemCategory;
   brand: string;
-  unitOfMeasureId: string;
+  unitOfMeasure: StockItemUnitOfMeasure;
   reorderLevel: number;
   barcode: string;
-  quantity?:number;
   landingCost: number;
   markupCost: number;
-  vatCategoryId: string;
-  hsnSectionId: string;
-  isicSectionId: string;
-  status?: string;//returned upon creation
-  createdAt?: string;//returned upon creation
+  vatCategory: StockItemVatCategory;
+  hsnSection: StockItemSection;
+  isicSection: StockItemSection;
+  status: string;
+  createdAt: string;
+  quantityOnHand: number;
 }
 
 
@@ -28,8 +73,8 @@ export interface CreateStokeItemResponse{
     data: StockItem;
 }
 
-export interface ListStokeItemRespsonse{
-  data:StockItem
+export interface ListStokeItemRespsonse {
+  data: Paged<StockItem>;
 }
 
 export interface refillFinishedProductsCredentials {
@@ -40,13 +85,17 @@ export interface refillFinishedProductsCredentials {
 }
 
 
+// in InventoryTypes.ts
 export interface refillFinishedProductsResponseData {
-    ref: string;
-    stockItemId : string;
-    quantity: number;
-    performedBy: string;
-    at: string;
-  
+  ref: string;
+  stockItemId: string;
+  quantity: number;
+  performedBy: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  at: string;
 }
 
 export interface refillFinishedProductsResponse {
@@ -127,7 +176,7 @@ export interface driverResponse{
 }
 
 export interface listDriverResponse{
-  data: driver[];
+  data: Paged<driver>;
 }
 
 interface stockTransferLineItem{
@@ -262,45 +311,39 @@ export interface movementReportFilterCredentials {
   to?:string;//date
 }
 
-export interface movementReportResponseData {
-  
-      sn: number;
-      date: string;
-      locationId: string;
-      stockItemId: string;
-      itemCode: string;
-      itemName: string;
-      sourceType: string;
-      sourceReference: string;
-      qtyIn: number;
-      qtyOut: number; 
-    
-}
-export interface movementReportResponse {
-  data: movementReportResponseData[];
-}
 
 
-export interface groupCardFilterCredentials{
-  groupBy:"CATEGORY";
+
+export interface groupCardFilterCredentials {
+  groupBy: "CATEGORY";
   groupId: string;
   locationId?: string;
-  from?:string;//date
-  to?:string;//date
+  from?: string; // date
+  to?: string;   // date
+  page?: number;
+  size?: number;
+  q?: string;
 }
 
 export interface StockLedgerMember {
-  stockItemId: string;
-  code: string;
-  name: string;
+  stockItem: {
+    id: string;
+    code: string;
+    name: string;
+    itemType: string;
+  };
   unit: string;
 }
 
 export interface StockLedgerHeader {
   groupType: string;
-  groupId: string;
-  groupName: string;
+  group: {
+    id: string;
+    name: string;
+    type: string;
+  };
   members: StockLedgerMember[];
+  memberCount: number;
   openingBalance: number;
   totalReceived: number;
   totalIssued: number;
@@ -321,7 +364,7 @@ export interface StockLedgerRow {
 
 export interface StockLedgerResponseData {
   header: StockLedgerHeader;
-  rows: StockLedgerRow[];
+  rows: Paged<StockLedgerRow>;   // was StockLedgerRow[]
 }
 
 export interface StockLedgerResponse {
@@ -329,19 +372,25 @@ export interface StockLedgerResponse {
 }
 
 
-
 export interface StockBinLedgerMember {
-  stockItemId: string;
-  code: string;
-  name: string;
+  stockItem: {
+    id: string;
+    code: string;
+    name: string;
+    itemType: string;
+  };
   unit: string;
 }
 
 export interface StockBinLedgerHeader {
   groupType: string;
-  groupId: string;
-  groupName: string;
+  group: {
+    id: string;
+    name: string;
+    type: string;
+  };
   members: StockBinLedgerMember[];
+  memberCount: number;
   openingBalance: number;
   totalReceived: number;
   totalIssued: number;
@@ -358,47 +407,146 @@ export interface StockBinLedgerRow {
 
 export interface StockBinLedgerResponseData {
   header: StockBinLedgerHeader;
-  rows: StockBinLedgerRow[];
+  rows: Paged<StockBinLedgerRow>;   // was StockBinLedgerRow[]
 }
 
 export interface StockBinLedgerResponse {
   data: StockBinLedgerResponseData;
 }
-
-
-export interface StockAndGroupBinCardFilterCredentials{
-
+export interface StockAndGroupBinCardFilterCredentials {
   locationId: string;
-  includeAreas: boolean;//default to true
-
-  from?:string;//date
-  to?:string;//date
-
+  includeAreas: boolean; // default to true
+  from?: string;
+  to?: string;
+  page?: number;
+  size?: number;
+  q?: string;
 }
 
-export interface StockLedgerCardSingleProductResponseData{
-sn: number;
-      date: string;
-      remark: string;
-      qtyIn: number;
-      qtyOut: number;
-      runningBalance: number;
+export interface StockLedgerCardSingleProductResponseData {
+  sn: number;
+  date: string;
+  remark: string;
+  qtyIn: number;
+  qtyOut: number;
+  runningBalance: number;
 }
 
 export interface StockLedgerCardSingleProductResponse {
-  data: StockLedgerCardSingleProductResponseData[];
+  data: Paged<StockLedgerCardSingleProductResponseData>;
 }
 
-
-export interface BinLedgerSingleProductResponseData{
- 
-      sn: number;
-      date: string;
-      qtyIn: number;
-      qtyOut: number;
-      balance: number;
-    
+export interface BinLedgerSingleProductResponseData {
+  sn: number;
+  date: string;
+  qtyIn: number;
+  qtyOut: number;
+  balance: number;
 }
+
 export interface BinLedgerSingleProductResponse {
-  data: BinLedgerSingleProductResponseData[];
+  data: Paged<BinLedgerSingleProductResponseData>;
+}
+
+
+// ── Stock transfers ──────────────────────────────────────────────
+export interface listStockTransferFilterCredentials {
+  locationId: string;
+  q?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  size?: number;
+}
+
+export interface StockTransferResponseLine {
+  id: string;
+  stockItem: {
+    id: string;
+    code: string;
+    name: string;
+    itemType: string;
+  };
+  unit: string;
+  qtySent: number;
+  qtyReceived: number | null;
+  qtyRejected: number | null;
+  outstanding: number;
+  fromLocation: unknown;
+  receivedIntoLocation: unknown;
+  batchNo: string | null;
+  rejectionNote: string | null;
+}
+
+export interface StockTransferResponseData {
+  id: string;
+  waybillRef: string;
+  sourceLocation: {
+    id: string;
+    code: string;
+    name: string;
+    type: string;
+  };
+  destinationLocation: {
+    id: string;
+    code: string;
+    name: string;
+    type: string;
+  };
+  status: string;
+  driver: {
+    id: string;
+    name: string;
+    phone: string;
+  };
+  driverVehicle: string;
+  transferDate: string;
+  dispatchedAt: string;
+  receivedDate: string | null;
+  receivedAt: string | null;
+  receiptNote: string | null;
+  totalSent: number;
+  totalRejected: number;
+  waybillUrl: string;
+  lines: StockTransferResponseLine[];
+}
+
+export interface listStockTransferResponse {
+  data: Paged<StockTransferResponseData>;
+}
+
+// ── Movement report ──────────────────────────────────────────────
+export interface movementReportFilterCredentials {
+  locationId: string;
+  stockItemId?: string;
+  sourceType?: "TRANSFER_OUT" | "REFILL" | "QUANTITY_ADJUSTMENT";
+  from?: string;
+  to?: string;
+  page?: number;
+  size?: number;
+}
+
+export interface movementReportResponseData {
+  sn: number;
+  date: string;
+  location: {
+    id: string;
+    code: string;
+    name: string;
+    type: string;
+  };
+  stockItem: {
+    id: string;
+    code: string;
+    name: string;
+    itemType: string;
+  };
+  sourceType: string;
+  sourceReference: string;
+  qtyIn: number;
+  qtyOut: number;
+}
+
+export interface movementReportResponse {
+  data: Paged<movementReportResponseData>;
 }

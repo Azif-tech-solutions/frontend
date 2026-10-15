@@ -119,9 +119,9 @@
 //     const ref = issueRef('RF')
 //     const units = valid.reduce((n, r) => n + Number(r.qty), 0)
 //     const label = finishedProducts.find((p) => p.value === valid[0].product)?.label || 'Finished product'
-//     postRefill('finished', {
+//     ill('finished', {
 //       ref,
-//       title: valid.length === 1 ? label : `${label} +${valid.length - 1} more`,
+//       postReftitle: valid.length === 1 ? label : `${label} +${valid.length - 1} more`,
 //       qty: `+${units.toLocaleString()} ctn`,
 //       lines: valid.map(({ product, qty, batch }) => ({ product, qty, batch })),
 //       by: recordedBy,
@@ -323,22 +323,48 @@ export default function StockRefillFinished({ leaf, moduleLabel, parentLabel, on
   lookupsRef.current = { factories, categories: categoryOptions(categories), units: unitOptions(units) }
 
   // Load the finished products of the chosen factory.
-  useEffect(() => {
-    if (!factoryId) { setItems([]); return }
+  // Load the finished products of the chosen factory (paginated under the hood).
+useEffect(() => {
+  if (!factoryId) {
+    setItems([])
+    return
+  }
 
-    let cancelled = false
-    inventoryApi.listStockItems(factoryId, 'FINISHED_PRODUCT')
-      .then(({ data }) => {
-        if (cancelled) return
-        // toStoreProduct also defaults a missing quantity to 0.
-        setItems((data || []).map((i) => inventoryApi.toStoreProduct(i, lookupsRef.current)))
-      })
-      .catch((error) => {
-        if (!cancelled) showToast('Could not load products', error.message, true)
+  let cancelled = false
+
+  const loadAllProducts = async () => {
+    let page = 0
+    let all = []
+    let hasMore = true
+
+    while (hasMore && !cancelled) {
+      const { data } = await inventoryApi.listStockItems(factoryId, 'FINISHED_PRODUCT', {
+        page,
+        size: 60,
       })
 
-    return () => { cancelled = true }
-  }, [factoryId, reloadKey, showToast])
+      const pageItems = data?.items ?? data ?? []
+      const mapped = pageItems.map((i) =>
+        inventoryApi.toStoreProduct(i, lookupsRef.current)
+      )
+
+      all = [...all, ...mapped]
+      hasMore = data?.totalPages != null
+        ? (data.page + 1) < data.totalPages
+        : pageItems.length === 50
+
+      page++
+    }
+
+    if (!cancelled) setItems(all)
+  }
+
+  loadAllProducts().catch((error) => {
+    if (!cancelled) showToast('Could not load products', error.message, true)
+  })
+
+  return () => { cancelled = true }
+}, [factoryId, reloadKey, showToast])
 
   // The product list belongs to one factory, so a new factory clears the old
   // list and any product already picked on the lines.
@@ -439,12 +465,13 @@ export default function StockRefillFinished({ leaf, moduleLabel, parentLabel, on
         const qty = Number(done?.quantity ?? line.qty)
 
         // Save the server's result into the store, keyed by the reference it issued.
+        // Save the server's result into the store, keyed by the reference it issued.
         postRefill('finished', {
           ref: done.ref,
           title: item?.name || 'Finished product',
           qty: `+${qty.toLocaleString()}${item?.unit ? ` ${item.unit}` : ''}`,
           lines: [{ product: line.product, qty, batch: line.batch }],
-          by: done.performedBy || recordedBy,
+          by: done.performedBy?.name || done.performedBy?.email || recordedBy,
         })
         refs.push(done.ref)
         units += qty

@@ -111,14 +111,25 @@ export function RegisterShell({
   stats, columns = [], rows = [], totals, onRowClick,
   emptyTitle = 'Nothing registered yet', emptyDescription, emptyAction,
   children, footnote, wide, pageSize, exportLabel = 'Export',
-  searchable = true, searchKeys,
+  // searchable = true, searchKeys,
+   searchable = true, searchKeys,
+  search: controlledSearch, onSearch: onControlledSearch, // server-side search
+  pagination,                                             // server-side pagination
 }) {
-  const [search, setSearch] = useState('')
+  // const [search, setSearch] = useState('')
 
-  // What the table (and the export) shows. `rows` itself is untouched, so a
-  // page's own stats and totals still describe the full set.
-  const visibleRows = searchable ? filterRows(rows, searchKeys ?? columns.map((c) => c.key), search) : rows
+  // // What the table (and the export) shows. `rows` itself is untouched, so a
+  // // page's own stats and totals still describe the full set.
+  // const visibleRows = searchable ? filterRows(rows, searchKeys ?? columns.map((c) => c.key), search) : rows
+   const [localSearch, setLocalSearch] = useState('')
+  const serverMode = !!pagination
+  const search = controlledSearch ?? localSearch
+  const setSearch = onControlledSearch ?? setLocalSearch
 
+  // In server mode the rows are already filtered by the API.
+  const visibleRows = searchable && !serverMode
+    ? filterRows(rows, searchKeys ?? columns.map((c) => c.key), search)
+    : rows
   const doExport = useTableExport({ columns, rows: visibleRows, totals, title, emptyHint: 'This register has no records yet.' })
 
   return (
@@ -146,18 +157,23 @@ export function RegisterShell({
       {children}
 
       <Panel padding={0}>
-        {rows.length === 0 ? (
-          <EmptyState
-            icon="folder-open"
+       
+
+        {rows.length === 0 && !(serverMode && search.trim()) ? (
+        <EmptyState 
+         icon="folder-open"
             title={emptyTitle}
             description={emptyDescription}
             action={emptyAction ?? (createLabel ? <Button iconLeft="plus" onClick={onCreate}>{createLabel}</Button> : null)}
-          />
-        ) : visibleRows.length === 0 ? (
-          // Records exist, but none match the search box.
-          <EmptyState icon="search" title="No matches" description={`Nothing matches "${search.trim()}".`} />
-        ) : (
-          <ReportTable columns={columns} rows={visibleRows} totals={totals} onRowClick={onRowClick} pageSize={pageSize} stickyHeader={false} style={{ border: 'none', borderRadius: 0 }} />
+        />
+      ) : visibleRows.length === 0 ? (
+        <EmptyState icon="search" title="No matches" description={`Nothing matches "${search.trim()}".`} />
+      ) : (
+        <ReportTable
+          columns={columns} rows={visibleRows} totals={totals} onRowClick={onRowClick}
+          pageSize={pageSize} pagination={pagination} stickyHeader={false}
+          style={{ border: 'none', borderRadius: 0 }}
+        />  
         )}
       </Panel>
 
