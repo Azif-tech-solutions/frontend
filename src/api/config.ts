@@ -4,14 +4,29 @@ import { KEY } from "../app/store";
 // const AUTH_KEY = "biz_auth";
 
 
-export function getBaseUrl():{backendBaseUrl:string,frontendBaseUrl:string} {
-    // const BACKEND_BASE_URL:string="http://16.192.105.205:8080/api"#fa
-    const BACKEND_BASE_URL:string="https://d3t9f2p14df2uo.cloudfront.net/api"
-    const FRONTEND_BASE_URL:string="http://localhost:3001/api"
-    return {backendBaseUrl:BACKEND_BASE_URL,frontendBaseUrl:FRONTEND_BASE_URL}
+// export function getBaseUrl():{backendBaseUrl:string,frontendBaseUrl:string} {
+ export function getBaseUrl() {
+  const isProd = import.meta.env.VITE_ENVIRONMENT === "prod";
+  return {
+    backendBaseUrl: isProd
+      ? import.meta.env.VITE_BACKEND_BASE_PROD_URL
+      : import.meta.env.VITE_BACKEND_BASE_LOCAL_URL,
+    frontendBaseUrl: "http://localhost:3001/api",
+  };
 }
+// }
 
-
+export interface Paged<T> {
+  items: T[];
+  page: number;
+  size: number;
+  totalItems: number;
+  totalPages: number;
+  totalIsEstimate?: boolean;
+  facets?: unknown;
+  summary?: unknown;
+  meta?: unknown;
+}
 
 
 interface Tokens {

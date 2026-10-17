@@ -1,6 +1,0 @@
-*,*::before,*::after{box-sizing:border-box}
-body{margin:0;font:var(--type-body);color:var(--text-body);background:var(--surface-page);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
-a{color:var(--text-link);text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1.5px}
-a:hover{color:var(--text-link-hover)}
-::selection{background:var(--burgundy-200);color:var(--burgundy-950)}
-:focus-visible{outline:none;box-shadow:var(--focus-ring)}

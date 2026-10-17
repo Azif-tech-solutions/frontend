@@ -2,7 +2,7 @@
 
 import { BaseApi } from "./config.ts";
 import { refillRawMaterialsCredentials,driver,driverResponse,listDriverResponse } from "./types/InventoryTypes.ts";
-import { StockItem, ItemTypes, CreateStokeItemResponse, ListStokeItemRespsonse,refillFinishedProductsCredentials,refillFinishedProductsResponse,refillRawMaterialsResponse } from "./types/InventoryTypes.ts";
+import { StockItem,StockItemResponse, ItemTypes, CreateStokeItemResponse, ListStokeItemRespsonse,refillFinishedProductsCredentials,refillFinishedProductsResponse,refillRawMaterialsResponse } from "./types/InventoryTypes.ts";
 import { createStockTransferCredentials,CreateStockTransferResponse } from "./types/InventoryTypes.ts";
 import { quantityAdjustmentCredentials,LiveQuantityAdjustmentResponse } from "./types/InventoryTypes.ts";
 import { listStockTransferFilterCredentials,listStockTransferResponse } from "./types/InventoryTypes.ts";
@@ -32,13 +32,13 @@ export default class InventoryApi extends BaseApi {
    * register table use. It matches what registerProduct() used to build locally,
    * so every screen that reads `products` keeps working.
    */
-  toStoreProduct(p: StockItem, lookups: StockLookups) {
+  toStoreProduct(p: StockItemResponse, lookups: StockLookups) {
     const labelFor = (list: { value: string; label: string }[], id: string) =>
       list.find((o) => o.value === id)?.label ?? "";
 
     // "ACTIVE" -> "Active". The register's badge checks for "Active".
     const status = p.status ? p.status.charAt(0) + p.status.slice(1).toLowerCase() : "Active";
-
+    
     return {
       // identity
       id: p.id ?? p.code,
@@ -220,4 +220,7 @@ const data = await this.request<BinLedgerSingleProductResponse>(`/stock/card/${i
     return data;
   }
 }
+
+
+
 }
