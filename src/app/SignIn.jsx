@@ -69,7 +69,7 @@ export default function SignIn({ onSwitch }) {
       </div>
       <div style={{ textAlign: 'center', marginTop: 20, font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
         Don't have an account?{' '}
-        <button onClick={onSwitch} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', font: 'inherit', fontWeight: 600, cursor: 'pointer' }}>Sign up</button>
+        <button onClick={onSwitch} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', font: 'inherit', fontWeight: 600, cursor: 'pointer' }}>Sign upp...</button>
       </div>
     </AuthShell>
   )
