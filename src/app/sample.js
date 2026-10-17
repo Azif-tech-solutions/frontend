@@ -446,8 +446,8 @@ export const specialStockCardRows = [
 
 /** Materials or recipes are sourced by Direct Importation or In-House Production. */
 export const sourcingTypes = [
-  { value: 'inhouse', label: 'In-House Production' },
-  { value: 'import', label: 'Direct Importation' },
+  { value: 'IN_HOUSE_PRODUCTION', label: 'In-House Production' },
+  { value: 'DIRECT_IMPORTATION', label: 'Direct Importation' },
 ]
 
 export const registeredRecipes = [

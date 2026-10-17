@@ -1,17 +1,8 @@
 //inventory type.ts
+import { Paged } from "../config";
 
 export type ItemTypes = "FINISHED_PRODUCT" | "RAW_MATERIAL"
-export interface Paged<T> {
-  items: T[];
-  page: number;
-  size: number;
-  totalItems: number;
-  totalPages: number;
-  totalIsEstimate?: boolean;
-  facets?: unknown;
-  summary?: unknown;
-  meta?: unknown;
-}
+
 
 
 export interface StockItemLocation {
@@ -74,7 +65,7 @@ export interface CreateStokeItemResponse{
 }
 
 export interface ListStokeItemRespsonse {
-  data: Paged<StockItem>;
+  data: Paged<StockItemResponse>;
 }
 
 export interface refillFinishedProductsCredentials {
@@ -200,62 +191,10 @@ export interface createStockTransferCredentials{
 
 }
 
-export interface StockTransferResponseLine {
-  id: string;
-  stockItemId: string;
-  stockItemCode: string;
-  stockItemName: string;
-  unit: string;
-  qtySent: number;
-  qtyReceived: number;
-  qtyRejected: number;
-  outstanding: number;
-  fromLocationId: string;
-  fromLocationName: string;
-  receivedIntoLocationId: string;
-  receivedIntoLocationName: string;
-  batchNo: string;
-  rejectionNote: string;
-}
-
-export interface StockTransferResponseData {
-  id: string;
-  waybillRef: string;
-  sourceLocationId: string;
-  sourceLocationName: string;
-  sourceLocationType: string;
-  destinationLocationId: string;
-  destinationLocationName: string;
-  destinationLocationType: string;
-  status: string;
-  driverId: string;
-  driverName: string;
-  driverVehicle: string;
-  transferDate: string;
-  dispatchedAt: string;
-  receivedDate: string;
-  receivedAt: string;
-  receiptNote: string;
-  totalSent: number;
-  totalRejected: number;
-  waybillUrl: string;
-  lines: StockTransferResponseLine[];
-}
-
 export interface CreateStockTransferResponse {
   data: StockTransferResponseData;
 }
 
-export interface listStockTransferFilterCredentials {
-  locationId: string;
-  q?: string;
-  // sourceType?: "TRANSFER_OUT" | "REFILL" | "QUANTITY_ADJUSTMENT";
-   from?:string;//date
-  to?:string;//date
-}
-export interface listStockTransferResponse {
-  data: StockTransferResponseData[];
-}
 export interface quantityAdjustmentCredentials {
   locationId: string;
   stockItemId: string;
@@ -303,13 +242,6 @@ export interface LiveQuantityAdjustmentResponse {
   data: LiveQuantityAdjustmentResponseData;
 }
 
-export interface movementReportFilterCredentials {
-  locationId: string;
-  stockItemId?: string;
-  sourceType?: "TRANSFER_OUT" | "REFILL" | "QUANTITY_ADJUSTMENT";
-   from?:string;//date
-  to?:string;//date
-}
 
 
 
@@ -550,3 +482,5 @@ export interface movementReportResponseData {
 export interface movementReportResponse {
   data: Paged<movementReportResponseData>;
 }
+
+

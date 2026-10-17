@@ -4,7 +4,10 @@ import { getBaseUrl } from "./config.ts";
 import { BaseApi } from "./config.ts";
 import { CreateCategoryCredentials, CreateCategoryResponse, ListCategoryResponse } from "./types/FactoryTypes.ts";
 import {CreateManufacturerCredentials,CreateManufacturerResponse,ListManufacturerResponse,CreateUnitCredentials,CreateUnitResponse,ListUnitResponse} from "./types/FactoryTypes.ts";
-import { CreateFactoryCredentials, CreateFactoryResponse,ListFactoryResponse,CreateSupplierCredentials,CreateSupplierResponse,ListSupplierResponse } from "./types/FactoryTypes.ts";
+import { CreateFactoryCredentials, CreateFactoryResponse,ListFactoryResponse,CreateSupplierCredentials,CreateSupplierResponse,ListSupplierResponse,CreateRecipeCredentials } from "./types/FactoryTypes.ts";
+// export { CreateRecipeCredentials } from "./types/FactoryTypes.ts";
+import { CreateRecipeResponse,ListRecipesCredentrials,ListRecipesResponse } from "./types/FactoryTypes.ts";
+
 /** Factory-related endpoints. Only the endpoint-specific logic lives here. */
 export default class FactoryApi extends BaseApi {
   constructor() {
@@ -172,4 +175,22 @@ export default class FactoryApi extends BaseApi {
     });
     return data;
   }
+  // add CreateRecipeResponse to the existing InventoryTypes import
+async createRecipe(d: CreateRecipeCredentials) {
+  const data = await this.request<CreateRecipeResponse>("/recipes", {
+    method: "POST",
+    auth: true,
+    body: d,
+  });
+  return data;
+}
+
+async listRecipes(credentials: ListRecipesCredentrials) {
+  const data = await this.request<ListRecipesResponse>("/recipes", {
+    method: "GET",
+    auth: true,
+    query: credentials,
+  });
+  return data;
+}
 }
