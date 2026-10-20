@@ -28,6 +28,7 @@ const emptyState = {
   categories: [],
   refillDrafts: [],
   refills: [],
+  specialRecentProductionRuns: [],
   sequences: {},
   
 }
@@ -155,6 +156,10 @@ export function StoreProvider({ children }) {
   }, [])
   const overrideUnits = useCallback((units) => {
     setData((d) => ({ ...d, units: units }))
+  }, [])
+
+  const overrideRecentSpecialProductionRuns = useCallback((specialProductionRuns) => {
+    setData((d) => ({ ...d, specialProductionRuns: specialProductionRuns }))
   }, [])
 
   /**
@@ -418,6 +423,7 @@ const mergeProducts = useCallback(({ factoryIds, kinds }, incoming) => {
     peekRef, issueRef, overrideCategories,
     signUp, signIn, logout,overrideUnits,
     overrideProducts,
+    overrideRecentSpecialProductionRuns,
     upsertProduct,mergeProducts,
     overrideFactories,overrideSuppliers,overrideManufacturers,
     completeOnboarding, updateCompany, addUnit, updateUnit, removeUnit, addCategory, updateCategory, removeCategory, addSupplier, updateSupplier, removeSupplier, addManufacturer, updateManufacturer, removeManufacturer, addUser, setUserStatus, saveDraft, deleteDraft, postRefill, addBranch, addFactory, updateFactory, removeFactory, addTemplateField, removeTemplateField, addProduct, registerProduct, commitStockEntries,

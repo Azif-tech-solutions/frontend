@@ -7,7 +7,9 @@ import {CreateManufacturerCredentials,CreateManufacturerResponse,ListManufacture
 import { CreateFactoryCredentials, CreateFactoryResponse,ListFactoryResponse,CreateSupplierCredentials,CreateSupplierResponse,ListSupplierResponse,CreateRecipeCredentials } from "./types/FactoryTypes.ts";
 // export { CreateRecipeCredentials } from "./types/FactoryTypes.ts";
 import { CreateRecipeResponse,ListRecipesCredentrials,ListRecipesResponse } from "./types/FactoryTypes.ts";
-
+import { CreateSpecialClientCredentials,CreateSpecialClientResponse,CreateSpecialProductionRunCredentials,CreateSpecialProductionRunResponse } from "./types/FactoryTypes.ts";
+import { ListSpecialProductionRunResponse,UpdateSpecialProdctionRunStatusCredentials,UpdateSpecialProdctionRunStatusResponse,ListSpecialProductionRunsCredentials } from "./types/FactoryTypes.ts";
+// import { Paged } from "../config";
 /** Factory-related endpoints. Only the endpoint-specific logic lives here. */
 export default class FactoryApi extends BaseApi {
   constructor() {
@@ -190,6 +192,43 @@ async listRecipes(credentials: ListRecipesCredentrials) {
     method: "GET",
     auth: true,
     query: credentials,
+  });
+  return data;
+}
+
+async createSpecialClient(credentials: CreateSpecialClientCredentials) {
+  const data = await this.request<CreateSpecialClientResponse>("/special-production/clients", {
+    method: "POST",
+    auth: true,
+    body: credentials,
+  });
+  return data;
+}
+
+async createSpecialProductionRun(credentials: CreateSpecialProductionRunCredentials) {
+  const data = await this.request<CreateSpecialProductionRunResponse>("/special-production/runs", {
+    method: "POST",
+    auth: true,
+    body: credentials,
+  });
+  return data;
+}
+
+async updateSpecialProductionRunStatus(id: string, credentials: UpdateSpecialProdctionRunStatusCredentials) {
+  const data = await this.request<UpdateSpecialProdctionRunStatusResponse>(`/special-production/runs/${id}/status`, {
+    method: "PUT",
+    auth: true,
+    body: credentials,
+  });
+  return data;
+
+}
+
+async listSpecialProductionRuns(query: ListSpecialProductionRunsCredentials) {
+  const data = await this.request<ListSpecialProductionRunResponse>("/special-production/runs", {
+    method: "GET",
+    auth: true,
+    query: query,
   });
   return data;
 }

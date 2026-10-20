@@ -6,7 +6,7 @@ import StockRegistration from './StockRegistration'
 import ProductVariation from './ProductVariation'
 import StockRecords from './StockRecords'
 import Branches from './Branches'
-
+import SpecialProductionRuns from './factory/SpecialProductionList'
 // ── 5.1 Factory ──
 import StockRefillFinished from './factory/StockRefillFinished'
 import StockRefillRaw from './factory/StockRefillRaw'
@@ -171,6 +171,7 @@ export const screens = {
   // 5.1 Factory — block A7
   'f.special.production': SpecialProduction,
   'f.special.reports': SpecialProductionReports,
+  'f.special.production.list': SpecialProductionRuns,
 
   // 5.1 Factory — block A8
   'f.cashflow': CashFlowStatement,

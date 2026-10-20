@@ -73,6 +73,7 @@ export const navModules = [
       {
         id: 'f.special', label: 'Special Production', icon: 'sparkles', ref: '5.1.16–5.1.17',
         children: [
+          { id: 'f.special.production.list', label: 'Production List', view: 'f.special.production.list', ref: '5.1.699', description: 'One-off production outside registered recipes List' },
           { id: 'f.special.production', label: 'Production', view: 'f.special.production', ref: '5.1.16', description: 'One-off production outside registered recipes' },
           { id: 'f.special.reports', label: 'Reports', view: 'f.special.reports', ref: '5.1.17', description: 'Special production history' },
         ],
