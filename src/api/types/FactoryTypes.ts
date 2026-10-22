@@ -161,5 +161,176 @@ export interface ListRecipesResponse {
   data: Paged<RecipeResponseData>;
 }
 
+export interface CreateSpecialClientCredentials{
+  id?:string;//returned from server once created
+  name:string;
+  terms:string;
+  // conditions:string;
+}
+
+export interface CreateSpecialClientResponse{
+  data:CreateSpecialClientCredentials;
+}
+
+
+export interface CreateSpecialProductionRunCredentials {
+  locationId: string;
+  clientId: string;
+  targetStockItemId: string;
+  productDescription: string;
+  quantity: number;
+  unitId: string;
+  unitCost: number;
+  price: number;
+  materials: {
+    stockItemId: string;
+    quantity: number;
+  }[];
+}
+
+export interface CreateSpecialProductionRunResponseData {
+  id: string;
+  orderRef: string;
+  batchRef: string;
+  client: {
+    kind: string;
+    id: string;
+    "details$zifiq_backend": {
+      [key: string]: unknown;
+    };
+    "visible$zifiq_backend": boolean;
+    code: string;
+    name: string;
+    fields: {
+      [key: string]: unknown;
+    };
+  };
+  quantity: number;
+  price: number;
+  status: string;
+}
+
+export interface CreateSpecialProductionRunResponse {
+  data: CreateSpecialProductionRunResponseData;
+}
+
+export interface ListSpecialProductionRunResponse {
+  data: Paged<CreateSpecialProductionRunResponseData>;
+}
+export interface UpdateSpecialProdctionRunStatusCredentials {
+  
+  status: string///ACTIVE ,PENDING OR DELIVERED
+}
+
+export interface UpdateSpecialProdctionRunStatusResponse {
+  data: CreateSpecialProductionRunResponseData;
+}
+
+export interface ListSpecialProductionRunsCredentials {
+  clientId?:string;
+  locationId?:string;
+  page: number;
+
+  size: number;
+}
+
+
+export interface CreateProductionCostCalculatorCredentials {
+  locationId: string;
+  targetStockItemId: string;
+  recipeId: string;
+  batchSizeQty: number;
+  materials: {
+    stockItemId: string;
+    quantity: number;
+  }[];
+  overheads: {
+    label: string;
+    amount: number;
+  }[];
+}
+
+export interface CreateProductionCostCalculatorResponseData {
+  id: string;
+  targetStockItem: {
+    kind: string;
+    id: string;
+    "details$zifiq_backend": {
+      [key: string]: unknown;
+    };
+    "visible$zifiq_backend": boolean;
+    code: string;
+    name: string;
+    fields: {
+      [key: string]: unknown;
+    };
+  };
+  batchSizeQty: number;
+  status: string;
+  computedBy: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  createdAt: string;
+}
+
+export interface CreateProductionCostCalculatorResponse {
+  data: CreateProductionCostCalculatorResponseData;
+}
+
+export interface ProductionRunTargetStockItem {
+  kind: string;
+  id: string;
+  "details$zifiq_backend": {
+    [key: string]: unknown;
+  };
+  "visible$zifiq_backend": boolean;
+  code: string;
+  name: string;
+  fields: {
+    [key: string]: unknown;
+  };
+}
+
+export interface ProductionRunResponseData {
+  batchRef: string;
+  targetStockItem: ProductionRunTargetStockItem;
+  quantityProduced: number;
+  unitLandingCost: number;
+  totalLandingCost: number;
+  runAt: string;
+}
+
+export interface ListProductionRunCredentials {
+  locationId?: string;
+  from?: string;
+  to?: string;
+  page: number;
+  size: number;
+}
+
+export interface ListProductionRunResponse {
+  data: Paged<ProductionRunResponseData>;
+}
+
+export interface ListProductionTotalCostCredetials{
+  recipeIds:string[];
+
+}
+
+export interface ListProductionTotalCostResponseData{
+  recipe:{
+    id:string;
+    code:string;
+    name:string;
+    // itemType:string;
+  };
+  qtyUsed:number;
+  totalCost:number;
+}
+export interface ListProductionTotalCostResponse{
+  data:ListProductionTotalCostResponseData[];
+}
 
 // Important: Your

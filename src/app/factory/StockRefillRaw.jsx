@@ -13,7 +13,9 @@ import { categoryOptions } from '../categoryOptions.js'
 import { useStore } from '../store.jsx'
 import { fmtDate } from '../utils.js'
 import InventoryApi from '../../api/InventoryApi.js'
+import FactoryApi from '../../api/FactoryApi.js'
 
+const factoryApi = new FactoryApi()
 const inventoryApi = new InventoryApi()
 
 const blank = () => ({ id: Math.random().toString(36).slice(2), material: '', qty: '', manufacturer: '', mfgDate: '', expiry: '', unitCost: '' })
@@ -35,8 +37,13 @@ export default function StockRefillRaw({ leaf, moduleLabel, parentLabel, onNavig
   const [reloadKey, setReloadKey] = useState(0)
   const [notes, setNotes] = useState('')
   const [posting, setPosting] = useState(false)
-
-  const materialOptions = items.map((p) => ({ value: p.id, label: p.name }))
+  const [recipes, setRecipes] = useState([]) // this factory's imported recipes
+  // const materialOptions = items.map((p) => ({ value: p.id, label: p.name }))
+  // Recipes get a "rec:" prefix so their ids can't clash with stock item ids.
+const materialOptions = [
+  ...items.map((p) => ({ value: p.id, label: p.name })),
+  ...recipes.map((r) => ({ value: `rec:${r.id}`, label: `Recipe · ${r.name}` })),
+]
   const supplierOptions = suppliers.map((s) => ({ value: s.id, label: s.name }))
   const manufacturerOptions = manufacturers.map((m) => ({ value: m.id, label: m.name }))
 
@@ -110,11 +117,31 @@ useEffect(() => {
 
   return () => { cancelled = true }
 }, [factoryId, reloadKey, showToast])
+
+// Load the active imported recipes of the chosen factory.
+useEffect(() => {
+  if (!factoryId) {
+    setRecipes([])
+    return
+  }
+  let cancelled = false
+  factoryApi
+    .listRecipes({ locationId: factoryId, status: 'ACTIVE', page: 0, size: 200 })
+    .then((res) => {
+      if (cancelled) return
+      const p = res?.data
+      const list = Array.isArray(p) ? p : p?.items ?? p?.content ?? []
+      setRecipes(list)
+    })
+    .catch((e) => !cancelled && showToast('Could not load recipes', e.message, true))
+  return () => { cancelled = true }
+}, [factoryId, reloadKey, showToast])
   // The material list belongs to one factory, so a new factory clears the old
   // list and any material already picked on the lines.
   const changeFactory = (id) => {
     setFactoryId(id)
     setItems([])
+    setRecipes([])
     setRows((rs) => rs.map((r) => ({ ...r, material: '' })))
   }
 
@@ -130,10 +157,19 @@ useEffect(() => {
     setRows((rs) => rs.map((r, ri) => (ri === i ? { ...r, [key]: value } : r)))
   }
 
-  const itemById = Object.fromEntries(items.map((p) => [p.id, p]))
+  // const itemById = Object.fromEntries(items.map((p) => [p.id, p]))
+  const itemById = Object.fromEntries([
+  ...items.map((p) => [p.id, p]),
+  ...recipes.map((r) => [
+    `rec:${r.id}`,
+    { id: r.id, name: r.name, unit: r.yieldUnit?.name, isRecipe: true },
+  ]),
+])
   const decorated = rows.map((r) => {
     const item = itemById[r.material]
-    const onHand = item ? Number(item.quantity ?? 0) : undefined
+    // const onHand = item ? Number(item.quantity ?? 0) : undefined
+    // recipes have no on-hand figure, so it stays blank for them
+const onHand = item && !item.isRecipe ? Number(item.quantity ?? 0) : undefined
     const total = Number(r.qty) * Number(r.unitCost)
     return {
       ...r,
@@ -217,7 +253,8 @@ useEffect(() => {
       try {
         const res = await inventoryApi.refillRawMaterials({
           locationId: factoryId,
-          stockItemId: line.material,
+          // stockItemId: line.material,
+          stockItemId: line.material.startsWith('rec:') ? line.material.slice(4) : line.material,
           supplierId,
           manufacturerId: lineManufacturer,
           quantity: Number(line.qty),

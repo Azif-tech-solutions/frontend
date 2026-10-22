@@ -9,7 +9,8 @@ import Sidebar from './app/Sidebar'
 import Toast from './app/Toast'
 import Placeholder from './app/shells/Placeholder.jsx'
 import { screens } from './app/screens'
-import { navById, moduleById, parentLabelById } from './app/nav'
+// import { navById, moduleById, parentLabelById } from './app/nav'
+import { useNav } from './app/nav'
 import { NavProvider } from './app/navContext.jsx'
 import { initials } from './app/utils.js'
 import Loader from './ds/components/core/Loader.jsx'
@@ -27,7 +28,7 @@ const authApi=new AuthApi()
 const factoryApi=new FactoryApi()
 const settingsApi=new SettingsApi()
 /** URL → the same three values the old useState calls held. */
-function resolveRoute(pathname, state) {
+function resolveRoute(pathname, state, navById) {
   const params = state?.params || {}
   const segs = pathname.split('/').filter(Boolean)
   if (!segs.length) return { activeId: 'overview', offNavLeaf: null, params, param: undefined }
@@ -51,7 +52,7 @@ function resolveRoute(pathname, state) {
 export default function App() {
   const { loggedIn, company,updateCompany,overrideFactories } = useStore()
   const [profileChecked, setProfileChecked] = useState(false)
-
+  const { navById, moduleById, parentLabelById } = useNav()
   const routerNavigate = useNavigate()
   const { pathname, state } = useLocation()
   const [navOpen, setNavOpen] = useState(false)
@@ -131,7 +132,7 @@ useEffect(() => {
     state: { params: toPlain(target.params) || {}, leaf: inNav ? null : toPlain(target) },
   })
   setNavOpen(false)
-}, [routerNavigate])
+}, [routerNavigate, navById])
 
   // ── Auth gate (all hooks are above, so early returns are safe) ──
   if (!loggedIn) {
@@ -149,7 +150,8 @@ useEffect(() => {
   // Onboarding gate stays state-driven and keeps whatever URL the user is on.
   // if (!company.onboarded) return <><Onboarding /><Toast /></>
 
-  const route = resolveRoute(pathname, state)
+  // const route = resolveRoute(pathname, state)
+   const route = resolveRoute(pathname, state, navById)
   if (!route) return <Navigate to="/" replace />
 const { activeId, offNavLeaf, params, param } = route
   // const { activeId, offNavLeaf, params } = route

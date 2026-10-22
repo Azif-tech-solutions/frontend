@@ -1,9 +1,11 @@
+import { useMemo } from 'react'
+import { useStore } from './store'
 // ZifIQ information architecture — derived from PRD v3.0 §5.1–5.11.
 // Three levels: module (collapsible section) → item → child.
 // `view` is the screen key resolved by the screen registry in screens.js.
 // Icon names are Lucide glyph names.
 //nav.js
-export const navModules = [
+export const baseModules = [
   // Overview sits on its own at the top of the sidebar — no wrapper group.
   {
     id: 'home',
@@ -54,13 +56,14 @@ export const navModules = [
       { id: 'f.compstock', label: 'Comprehensive Stock Report', icon: 'clipboard-list', view: 'f.compstock', ref: '5.1.8', description: 'Full factory stock position and value' },
       { id: 'f.movement', label: 'Stock Movement Report', icon: 'arrow-left-right', view: 'f.movement', ref: '5.1.9', description: 'All in/out movements over a period' },
       { id: 'f.transfer', label: 'Stock Transfer', icon: 'truck', view: 'f.transfer', ref: '5.1.10', description: 'Transfer stock to another factory or showroom' },
-      {
-        id: 'f.costcalc', label: 'Production Cost Calculator', icon: 'calculator', ref: '5.1.11–5.1.12',
-        children: [
-          { id: 'f.costcalc.a', label: 'Factory A', view: 'f.costcalc', params: { factoryKey: 'fa' }, ref: '5.1.11', description: 'Landing-cost calculation for Factory A runs' },
-          { id: 'f.costcalc.b', label: 'Factory B', view: 'f.costcalc', params: { factoryKey: 'fb' }, ref: '5.1.12', description: 'Landing-cost calculation for Factory B runs' },
-        ],
-      },
+      // {
+      //   id: 'f.costcalc', label: 'Production Cost Calculator', icon: 'calculator', ref: '5.1.11–5.1.12',
+      //   children: [
+      //     { id: 'f.costcalc.a', label: 'Factory A', view: 'f.costcalc', params: { factoryKey: 'fa' }, ref: '5.1.11', description: 'Landing-cost calculation for Factory A runs' },
+      //     { id: 'f.costcalc.b', label: 'Factory B', view: 'f.costcalc', params: { factoryKey: 'fb' }, ref: '5.1.12', description: 'Landing-cost calculation for Factory B runs' },
+      //   ],
+      // },
+      { id: 'f.costcalc', label: 'Production Cost Calculator', icon: 'calculator', ref: '5.1.11–5.1.12', children: [] },
       { id: 'f.recipecost', label: 'Total Cost for Selected Recipes', icon: 'receipt-text', view: 'f.recipecost', ref: '5.1.27', description: 'Aggregate cost across chosen recipes' },
       {
         id: 'f.recipes', label: 'In-House Recipes', icon: 'book-open', ref: '5.1.13–5.1.15',
@@ -73,6 +76,7 @@ export const navModules = [
       {
         id: 'f.special', label: 'Special Production', icon: 'sparkles', ref: '5.1.16–5.1.17',
         children: [
+          { id: 'f.special.production.list', label: 'Production List', view: 'f.special.production.list', ref: '5.1.699', description: 'One-off production outside registered recipes List' },
           { id: 'f.special.production', label: 'Production', view: 'f.special.production', ref: '5.1.16', description: 'One-off production outside registered recipes' },
           { id: 'f.special.reports', label: 'Reports', view: 'f.special.reports', ref: '5.1.17', description: 'Special production history' },
         ],
@@ -318,29 +322,105 @@ export const navModules = [
   },
 ]
 
-/** Flat list of every navigable leaf (items without children, plus all children). */
-export const navLeaves = navModules.flatMap((m) =>
-  m.items.flatMap((i) => (i.children ? i.children.map((c) => ({ ...c, moduleId: m.id, parentId: i.id })) : [{ ...i, moduleId: m.id }]))
-)
+// /** Flat list of every navigable leaf (items without children, plus all children). */
+// export const navLeaves = navModules.flatMap((m) =>
+//   m.items.flatMap((i) => (i.children ? i.children.map((c) => ({ ...c, moduleId: m.id, parentId: i.id })) : [{ ...i, moduleId: m.id }]))
+// )
 
-export const navById = Object.fromEntries(navLeaves.map((l) => [l.id, l]))
+// export const navById = Object.fromEntries(navLeaves.map((l) => [l.id, l]))
 
-/** moduleId → module, for breadcrumbs. */
-export const moduleById = Object.fromEntries(navModules.map((m) => [m.id, m]))
+// /** moduleId → module, for breadcrumbs. */
+// export const moduleById = Object.fromEntries(navModules.map((m) => [m.id, m]))
 
-/**
- * Breadcrumb targets. A module or parent-item label resolves to the first leaf
- * beneath it, so clicking "Factory" or "Stock Refill" in a breadcrumb goes
- * somewhere sensible instead of nowhere.
- */
+// /**
+//  * Breadcrumb targets. A module or parent-item label resolves to the first leaf
+//  * beneath it, so clicking "Factory" or "Stock Refill" in a breadcrumb goes
+//  * somewhere sensible instead of nowhere.
+//  */
+// const firstLeafOf = (item) => (item.children ? item.children[0] : item)
+
+// export const crumbTargetByLabel = Object.fromEntries([
+//   ...navModules.map((m) => [m.label, firstLeafOf(m.items[0])]),
+//   ...navModules.flatMap((m) => m.items.filter((i) => i.children).map((i) => [i.label, i.children[0]])),
+// ].filter(([label, leaf]) => label && leaf?.view))
+
+// /** leaf id → its parent item label, for breadcrumbs. */
+// export const parentLabelById = Object.fromEntries(
+//   navModules.flatMap((m) => m.items.filter((i) => i.children).flatMap((i) => i.children.map((c) => [c.id, i.label])))
+// )
+// ** One calculator entry per factory in the store. */
+const costCalcChildren = (factories) =>
+  factories.length
+    ? factories.map((f) => ({
+        id: `f.costcalc.${f.id}`,
+        label: f.name,
+        view: 'f.costcalc',
+        // These arrive on the screen as props (App spreads leaf.params into it).
+        params: { factoryKey: f.id, factoryId: f.id, factoryName: f.name },
+        ref: '5.1.11',
+        description: `Landing-cost calculation for ${f.name} runs`,
+      }))
+    : [
+        // No factories yet: point at the screen where one is created.
+        { id: 'f.costcalc.none', label: 'Add a factory first', view: 'factories', description: 'Register a factory to cost its production runs' },
+      ]
+ 
 const firstLeafOf = (item) => (item.children ? item.children[0] : item)
-
-export const crumbTargetByLabel = Object.fromEntries([
-  ...navModules.map((m) => [m.label, firstLeafOf(m.items[0])]),
-  ...navModules.flatMap((m) => m.items.filter((i) => i.children).map((i) => [i.label, i.children[0]])),
-].filter(([label, leaf]) => label && leaf?.view))
-
-/** leaf id → its parent item label, for breadcrumbs. */
-export const parentLabelById = Object.fromEntries(
-  navModules.flatMap((m) => m.items.filter((i) => i.children).flatMap((i) => i.children.map((c) => [c.id, i.label])))
-)
+ 
+/** Builds the module tree and every lookup that used to be a module-level constant. */
+export function buildNav(factories = []) {
+  const navModules = baseModules.map((m) =>
+    m.id !== 'factory'
+      ? m
+      : {
+          ...m,
+          items: m.items.map((i) =>
+            i.id === 'f.costcalc' ? { ...i, children: costCalcChildren(factories) } : i,
+          ),
+        },
+  )
+ 
+  /** Flat list of every navigable leaf (items without children, plus all children). */
+  const navLeaves = navModules.flatMap((m) =>
+    m.items.flatMap((i) =>
+      i.children
+        ? i.children.map((c) => ({ ...c, moduleId: m.id, parentId: i.id }))
+        : [{ ...i, moduleId: m.id }],
+    ),
+  )
+ 
+  const navById = Object.fromEntries(navLeaves.map((l) => [l.id, l]))
+ 
+  /** moduleId → module, for breadcrumbs. */
+  const moduleById = Object.fromEntries(navModules.map((m) => [m.id, m]))
+ 
+  /** A module or parent-item label resolves to the first leaf beneath it. */
+  const crumbTargetByLabel = Object.fromEntries(
+    [
+      ...navModules.map((m) => [m.label, firstLeafOf(m.items[0])]),
+      ...navModules.flatMap((m) =>
+        m.items.filter((i) => i.children).map((i) => [i.label, i.children[0]]),
+      ),
+    ].filter(([label, leaf]) => label && leaf?.view),
+  )
+ 
+  /** leaf id → its parent item label, for breadcrumbs. */
+  const parentLabelById = Object.fromEntries(
+    navModules.flatMap((m) =>
+      m.items.filter((i) => i.children).flatMap((i) => i.children.map((c) => [c.id, i.label])),
+    ),
+  )
+ 
+  return { navModules, navLeaves, navById, moduleById, crumbTargetByLabel, parentLabelById }
+}
+ 
+/** The live nav, rebuilt whenever the factories in the store change. */
+export function useNav() {
+  const { factories } = useStore()
+  return useMemo(() => buildNav(factories), [factories])
+}
+ 
+// Static, factory-less versions so any file that still imports these keeps
+// compiling. They will NOT contain the per-factory calculator entries, so move
+// those files over to useNav() when you can.
+export const { navModules, navLeaves, navById, moduleById, crumbTargetByLabel, parentLabelById } = buildNav([])
