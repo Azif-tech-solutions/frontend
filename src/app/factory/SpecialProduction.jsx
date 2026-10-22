@@ -384,7 +384,7 @@ export default function SpecialProduction({ leaf, moduleLabel, parentLabel }) {
             />
           </label>
         </div>
-      </Panel>
+      </Panel>z
 
       <Panel
         title="Recipes & raw materials consumed"

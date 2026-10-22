@@ -1,12 +1,12 @@
 //Factory.ts
-
-import { getBaseUrl } from "./config.ts";
 import { BaseApi } from "./config.ts";
 import { CreateCategoryCredentials, CreateCategoryResponse, ListCategoryResponse } from "./types/FactoryTypes.ts";
 import {CreateManufacturerCredentials,CreateManufacturerResponse,ListManufacturerResponse,CreateUnitCredentials,CreateUnitResponse,ListUnitResponse} from "./types/FactoryTypes.ts";
 import { CreateFactoryCredentials, CreateFactoryResponse,ListFactoryResponse,CreateSupplierCredentials,CreateSupplierResponse,ListSupplierResponse,CreateRecipeCredentials } from "./types/FactoryTypes.ts";
-// export { CreateRecipeCredentials } from "./types/FactoryTypes.ts";
-import { CreateRecipeResponse,ListRecipesCredentrials,ListRecipesResponse } from "./types/FactoryTypes.ts";
+import {ListRecipesCredentrials,ListRecipesResponse } from "./types/FactoryTypes.ts";
+import {ListProductionRunCredentials,ListProductionRunResponse} from "./types/FactoryTypes.ts";
+import { CreateRecipeResponse } from "./types/FactoryTypes.ts";
+import { CreateProductionCostCalculatorCredentials,CreateProductionCostCalculatorResponse,ListProductionTotalCostCredetials,ListProductionTotalCostResponse } from "./types/FactoryTypes.ts";
 import { CreateSpecialClientCredentials,CreateSpecialClientResponse,CreateSpecialProductionRunCredentials,CreateSpecialProductionRunResponse } from "./types/FactoryTypes.ts";
 import { ListSpecialProductionRunResponse,UpdateSpecialProdctionRunStatusCredentials,UpdateSpecialProdctionRunStatusResponse,ListSpecialProductionRunsCredentials } from "./types/FactoryTypes.ts";
 // import { Paged } from "../config";
@@ -230,6 +230,38 @@ async listSpecialProductionRuns(query: ListSpecialProductionRunsCredentials) {
     auth: true,
     query: query,
   });
+  return data;
+}
+
+async createProductionCostCalculator(credentials: CreateProductionCostCalculatorCredentials) {
+  const data = await this.request<CreateProductionCostCalculatorResponse>("/production/cost-calculator", {
+    method: "POST",
+    auth: true,
+    body: credentials,
+  });
+  return data;
+}
+async listProductionCostRuns(query: ListProductionRunCredentials) {
+  const data = await this.request<ListProductionRunResponse>("/production/runs", {
+    method: "GET",
+    auth: true,
+    query: query,
+  });
+  return data;
+}
+
+async listProductionTotalCost(query: ListProductionTotalCostCredetials) {
+  // The backend wants recipeIds repeated: ?recipeIds=a&recipeIds=b
+  const params = new URLSearchParams();
+  query.recipeIds.forEach((id) => params.append("recipeIds", id));
+
+  const data = await this.request<ListProductionTotalCostResponse>(
+    `/production/total-cost?${params.toString()}`,
+    {
+      method: "GET",
+      auth: true,
+    }
+  );
   return data;
 }
 }

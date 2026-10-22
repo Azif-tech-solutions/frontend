@@ -233,4 +233,104 @@ export interface ListSpecialProductionRunsCredentials {
 
   size: number;
 }
+
+
+export interface CreateProductionCostCalculatorCredentials {
+  locationId: string;
+  targetStockItemId: string;
+  recipeId: string;
+  batchSizeQty: number;
+  materials: {
+    stockItemId: string;
+    quantity: number;
+  }[];
+  overheads: {
+    label: string;
+    amount: number;
+  }[];
+}
+
+export interface CreateProductionCostCalculatorResponseData {
+  id: string;
+  targetStockItem: {
+    kind: string;
+    id: string;
+    "details$zifiq_backend": {
+      [key: string]: unknown;
+    };
+    "visible$zifiq_backend": boolean;
+    code: string;
+    name: string;
+    fields: {
+      [key: string]: unknown;
+    };
+  };
+  batchSizeQty: number;
+  status: string;
+  computedBy: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  createdAt: string;
+}
+
+export interface CreateProductionCostCalculatorResponse {
+  data: CreateProductionCostCalculatorResponseData;
+}
+
+export interface ProductionRunTargetStockItem {
+  kind: string;
+  id: string;
+  "details$zifiq_backend": {
+    [key: string]: unknown;
+  };
+  "visible$zifiq_backend": boolean;
+  code: string;
+  name: string;
+  fields: {
+    [key: string]: unknown;
+  };
+}
+
+export interface ProductionRunResponseData {
+  batchRef: string;
+  targetStockItem: ProductionRunTargetStockItem;
+  quantityProduced: number;
+  unitLandingCost: number;
+  totalLandingCost: number;
+  runAt: string;
+}
+
+export interface ListProductionRunCredentials {
+  locationId?: string;
+  from?: string;
+  to?: string;
+  page: number;
+  size: number;
+}
+
+export interface ListProductionRunResponse {
+  data: Paged<ProductionRunResponseData>;
+}
+
+export interface ListProductionTotalCostCredetials{
+  recipeIds:string[];
+
+}
+
+export interface ListProductionTotalCostResponseData{
+  recipe:{
+    id:string;
+    code:string;
+    name:string;
+    // itemType:string;
+  };
+  qtyUsed:number;
+  totalCost:number;
+}
+export interface ListProductionTotalCostResponse{
+  data:ListProductionTotalCostResponseData[];
+}
+
 // Important: Your

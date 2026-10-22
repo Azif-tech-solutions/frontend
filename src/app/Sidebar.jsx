@@ -3,10 +3,10 @@ import { useMemo, useState } from 'react'
 import { Avatar } from '../ds/components/core/Avatar.jsx'
 import { Icon } from '../ds/components/core/Icon.jsx'
 import { IconButton } from '../ds/components/core/IconButton.jsx'
-import { navModules } from './nav'
+// import { navModules } from './nav'
 import { useStore } from './store.jsx'
 import logoMark from '../assets/logo-mark.svg'
-
+import { useNav } from './nav'
 const eyebrow = {
   font: 'var(--type-eyebrow)',
   letterSpacing: 'var(--ls-widest)',
@@ -46,6 +46,7 @@ function Row({ icon, label, active, open, expandable, level, onClick }) {
 
 export default function Sidebar({ activeId, onNavigate, open, className = '' }) {
   const { company, user, logout } = useStore()
+  const { navModules } = useNav()
   const [query, setQuery] = useState('')
   const [openModules, setOpenModules] = useState(() => ({ factory: true }))
   const [openItems, setOpenItems] = useState({})
@@ -66,7 +67,7 @@ export default function Sidebar({ activeId, onNavigate, open, className = '' }) 
       }
     }
     return out.slice(0, 40)
-  }, [q])
+  }, [q, navModules])
 
   return (
     <div
