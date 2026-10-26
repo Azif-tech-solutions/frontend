@@ -484,3 +484,26 @@ export interface movementReportResponse {
 }
 
 
+export interface ReorderReportFilterCredential{
+
+  locationId?:string;
+  page?:number;
+  size?:number;
+
+}
+
+
+interface ReorderReportSingleItem{
+  stockItem:{
+    id:string;
+    code:string;
+    name:string;
+    itemType:string;
+  }
+  quantityOnhand:number;
+  reorderLevel:number;
+}
+
+export interface ReorderReportResponseData{
+  data:Paged<ReorderReportSingleItem>;
+}

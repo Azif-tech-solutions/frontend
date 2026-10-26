@@ -9,6 +9,8 @@ import { CreateRecipeResponse } from "./types/FactoryTypes.ts";
 import { CreateProductionCostCalculatorCredentials,CreateProductionCostCalculatorResponse,ListProductionTotalCostCredetials,ListProductionTotalCostResponse } from "./types/FactoryTypes.ts";
 import { CreateSpecialClientCredentials,CreateSpecialClientResponse,CreateSpecialProductionRunCredentials,CreateSpecialProductionRunResponse } from "./types/FactoryTypes.ts";
 import { ListSpecialProductionRunResponse,UpdateSpecialProdctionRunStatusCredentials,UpdateSpecialProdctionRunStatusResponse,ListSpecialProductionRunsCredentials } from "./types/FactoryTypes.ts";
+import { TradeOfferRespondResponse,ListTradeOfferResponse,TradeOfferRespondCredentials,ListTradeOfferCredentials } from "./types/FactoryTypes.ts";
+import { CreateTradeOfferCredentials,CreateTradeOfferResponse } from "./types/FactoryTypes.ts";
 // import { Paged } from "../config";
 /** Factory-related endpoints. Only the endpoint-specific logic lives here. */
 export default class FactoryApi extends BaseApi {
@@ -264,4 +266,31 @@ async listProductionTotalCost(query: ListProductionTotalCostCredetials) {
   );
   return data;
 }
+
+async createTradeOffer(d: CreateTradeOfferCredentials) {
+    const data = await this.request<CreateTradeOfferResponse>("/trades/offer", {
+      method: "POST",
+      auth: true,
+      body: d,
+    });
+    return data;
+  }
+
+  async tradeOfferResponse(id: string,body:TradeOfferRespondCredentials) {
+    const data = await this.request<TradeOfferRespondResponse>(`/trades/${id}/respond`, {
+      method: "GET",
+      auth: true,
+      body,
+    });
+    return data;
+  }
+
+  async listTradeOffers(d:ListTradeOfferCredentials) {
+    const data = await this.request<ListTradeOfferResponse>("/trades", {
+      method: "GET",
+      auth: true,
+      query: d,
+    });
+    return data;
+  }
 }

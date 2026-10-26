@@ -20,11 +20,21 @@ export function ReportShell({
   tableTitle = 'Results', tableActions, emptyTitle = 'No records for these filters',
   emptyDescription = 'Adjust the filters above and generate again.',
   footnote, children, wide, pageSize, exportLabel = 'Export',
+  pagination
 }) {
   const [values, setValues] = useState(filterValues || {})
+  const current = filterValues || values
   const handle = onFilterChange || ((k, v) => setValues((s) => ({ ...s, [k]: v })))
-  const doExport = useTableExport({ columns, rows, totals, title, emptyHint: 'Generate a report with at least one row first.' })
 
+  // const handle = onFilterChange || ((k, v) => setValues((s) => ({ ...s, [k]: v })))
+  // const doExport = useTableExport({ columns, rows, totals, title, emptyHint: 'Generate a report with at least one row first.' })
+  const doExport = useTableExport({ columns, rows, totals, title, emptyHint: 'Generate a report with at least one row first.' })
+  // Always hand the page the filter values, never the click event.
+  const handleGenerate = () => onGenerate?.(current)
+  const handleReset = () => {
+    if (!filterValues) setValues({})
+    onReset?.()
+  }
   return (
     <Page wide={wide}>
       <PageHeader
@@ -43,15 +53,23 @@ export function ReportShell({
 
       {tabs && <Tabs tabs={tabs} value={tab} onChange={onTabChange} />}
 
-      {filters.length > 0 && (
+      {/* {filters.length > 0 && (
         <FilterBar fields={filters} values={filterValues || values} onChange={handle} onGenerate={onGenerate || (() => {})} onReset={onReset || (() => {})} />
+      )} */}
+      {filters.length > 0 && (
+        <FilterBar
+          fields={filters}
+          values={current}
+          onChange={handle}
+          onGenerate={handleGenerate}
+          onReset={handleReset}
+        />
       )}
-
       {stats && stats.length > 0 && <StatRow stats={stats} />}
 
       {children}
 
-      <Panel
+      {/* <Panel
         title={tableTitle}
         description={rows.length ? `${rows.length} record${rows.length === 1 ? '' : 's'}` : undefined}
         actions={tableActions}
@@ -62,8 +80,31 @@ export function ReportShell({
         ) : (
           <ReportTable columns={columns} rows={rows} totals={totals} pageSize={pageSize} stickyHeader={false} style={{ border: 'none', borderRadius: 0 }} />
         )}
-      </Panel>
-
+      </Panel> */}
+    <Panel
+  title={tableTitle}
+  description={
+    pagination
+      ? `${pagination.total} record${pagination.total === 1 ? '' : 's'}`
+      : rows.length ? `${rows.length} record${rows.length === 1 ? '' : 's'}` : undefined
+  }
+  actions={tableActions}
+  padding={0}
+>
+  {rows.length === 0 ? (
+    <EmptyState icon="file-search" title={emptyTitle} description={emptyDescription} />
+  ) : (
+    <ReportTable
+      columns={columns}
+      rows={rows}
+      totals={totals}
+      pageSize={pageSize}
+      pagination={pagination}
+      stickyHeader={false}
+      style={{ border: 'none', borderRadius: 0 }}
+    />
+  )}
+</Panel>
       {footnote && (
         <div style={{ font: 'var(--type-caption)', color: 'var(--text-subtle)', maxWidth: '80ch' }}>{footnote}</div>
       )}

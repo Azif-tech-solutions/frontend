@@ -333,4 +333,56 @@ export interface ListProductionTotalCostResponse{
   data:ListProductionTotalCostResponseData[];
 }
 
+export interface CreateTradeOfferCredentials{
+  fromLocationId: string;
+  toLocationId: string;
+  stockItemId: string;
+  quantity: number; 
+  reason: string;
+  expiresAt: string;
+}
+
+interface TradeOffer{
+  id:string;
+  fromLocationId:StockItemLocation;
+  toLocationId:StockItemLocation;
+  stockItemId:{
+    id:string;
+    code:string;
+    name:string;
+    // itemType:string;
+  };
+  quantity:number;
+  reason:string;
+  status:string;
+  offeredAt:string;
+  // acceptedAt:string;
+  expiresAt:string;
+}
+export interface CreateTradeOfferResponse{
+  data:TradeOffer;
+}
+
+export interface TradeOfferRespondCredentials{
+  // id:string;
+  decistion:"ACCEPTED"|"REJECTED";
+}
+
+export interface TradeOfferRespondResponse{
+  data:TradeOffer;
+}
+
+export interface ListTradeOfferCredentials{
+  locationId?:string;
+
+  page: number;
+  size: number;
+}
+
+
+
+export interface ListTradeOfferResponse{
+  data: Paged<TradeOffer>;
+}
+// Important: Your
 // Important: Your

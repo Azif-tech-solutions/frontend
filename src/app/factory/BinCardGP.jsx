@@ -60,7 +60,7 @@ import { fmtDate } from '../utils.js'
 import InventoryApi from '../../api/InventoryApi.js'
 
 const inventoryApi = new InventoryApi()
-const PAGE_SIZE = 20
+const PAGE_SIZE = 1
 
 const num = (n) => (n ? Number(n).toLocaleString() : '—')
 const emptyFilters = { factory: '', group: '', from: '', to: '' }
