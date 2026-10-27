@@ -278,7 +278,7 @@ async createTradeOffer(d: CreateTradeOfferCredentials) {
 
   async tradeOfferResponse(id: string,body:TradeOfferRespondCredentials) {
     const data = await this.request<TradeOfferRespondResponse>(`/trades/${id}/respond`, {
-      method: "GET",
+      method: "POST",
       auth: true,
       body,
     });

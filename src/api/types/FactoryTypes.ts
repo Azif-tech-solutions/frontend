@@ -374,7 +374,7 @@ export interface TradeOfferRespondResponse{
 
 export interface ListTradeOfferCredentials{
   locationId?:string;
-
+  status?:"PENDING"|"ACCEPTED"|"REJECTED";
   page: number;
   size: number;
 }
