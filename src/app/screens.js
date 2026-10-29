@@ -193,6 +193,7 @@ export const screens = {
   's.cards': ShowroomCards,
   's.outsource': OutsourceStock,
   's.compstock': ShowroomStockReport,
+  's.showroomreg2': ShowroomRegister,
   's.transfer': ShowroomTransfer,
   's.returns': Returns,
   's.transferreport': GeneralTransferReport,

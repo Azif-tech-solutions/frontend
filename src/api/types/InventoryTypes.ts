@@ -1,7 +1,7 @@
 //inventory type.ts
 import { Paged } from "../config";
 
-export type ItemTypes = "FINISHED_PRODUCT" | "RAW_MATERIAL"
+export type ItemTypes = "FINISHED_PRODUCT" | "RAW_MATERIAL" | "OUTSOURCED"
 
 
 
