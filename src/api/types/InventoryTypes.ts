@@ -1,7 +1,7 @@
 //inventory type.ts
 import { Paged } from "../config";
 
-export type ItemTypes = "FINISHED_PRODUCT" | "RAW_MATERIAL"
+export type ItemTypes = "FINISHED_PRODUCT" | "RAW_MATERIAL" | "OUTSOURCED"
 
 
 
@@ -484,3 +484,26 @@ export interface movementReportResponse {
 }
 
 
+export interface ReorderReportFilterCredential{
+
+  locationId?:string;
+  page?:number;
+  size?:number;
+
+}
+
+
+interface ReorderReportSingleItem{
+  stockItem:{
+    id:string;
+    code:string;
+    name:string;
+    itemType:string;
+  }
+  quantityOnhand:number;
+  reorderLevel:number;
+}
+
+export interface ReorderReportResponseData{
+  data:Paged<ReorderReportSingleItem>;
+}

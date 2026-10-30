@@ -9,6 +9,8 @@ import { listStockTransferFilterCredentials,listStockTransferResponse } from "./
 import { movementReportFilterCredentials,movementReportResponse } from "./types/InventoryTypes.ts";
 import { groupCardFilterCredentials,StockLedgerResponse,StockBinLedgerResponse } from "./types/InventoryTypes.ts";
 import { StockAndGroupBinCardFilterCredentials,StockLedgerCardSingleProductResponse,BinLedgerSingleProductResponse } from "./types/InventoryTypes.ts";
+import { ReorderReportFilterCredential,ReorderReportResponseData } from "./types/InventoryTypes.ts";
+
 /**
  * Lists the page already has, used to turn ids from the API into the labels
  * the register shows. Categories and units are { value, label } option lists
@@ -200,7 +202,18 @@ export default class InventoryApi extends BaseApi {
       query: d,
     });
     return data;
+  } 
+
+  async getReorderReport(q: ReorderReportFilterCredential) {
+    const data = await this.request<ReorderReportResponseData>("/stock/re-order-report", {
+      method: "GET",
+      auth: true,
+      query: q,
+    });
+    return data;
   }
+
+  
 
   async listStockAndGroupBinLedgerForSingleItem(resource:string="bin",itemId:string,d: StockAndGroupBinCardFilterCredentials) {
     if(resource==="bin"){

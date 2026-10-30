@@ -281,11 +281,11 @@ export const factoryTrades = [
 ]
 
 export const tradeReasons = [
-  { value: 'surplus', label: 'Surplus stock' },
-  { value: 'expiry', label: 'Nearing expiry' },
-  { value: 'changeover', label: 'Surplus after line changeover' },
-  { value: 'schedule', label: 'Excess against revised schedule' },
-  { value: 'discontinued', label: 'Product discontinued' },
+  { value: 'SURPLUS', label: 'Surplus stock' },
+  { value: 'EXPIRY', label: 'Nearing expiry' },
+  { value: 'CHANGEOVER', label: 'Surplus after line changeover' },
+  { value: 'SCHEDULE', label: 'Excess against revised schedule' },
+  { value: 'DISCONTINUED', label: 'Product discontinued' },
 ]
 
 // ── Factory finance (PRD §5.1.18–5.1.23) ─────────────────────────────────────

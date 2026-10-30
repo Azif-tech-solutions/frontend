@@ -105,6 +105,7 @@ export const baseModules = [
     icon: 'store',
     section: '5.2',
     items: [
+      { id: 's.showroomreg2', label: 'Showroom Register', icon: 'register', view: 's.showroomreg2', ref: '5.2.0', description: 'Register a showroom showroom' },
       { id: 's.receive', label: 'Receive Product', icon: 'package-check', view: 's.receive', ref: '5.2.1', description: 'Confirm receipt of stock transferred in' },
       { id: 's.direct', label: 'Stock Entry (Direct)', icon: 'square-plus', view: 's.direct', ref: '5.2.2', description: 'Add stock directly at the showroom' },
       { id: 's.adjust', label: 'Quantity Adjustment', icon: 'sliders-horizontal', view: 's.adjust', ref: '5.2.3', description: 'Correct showroom stock quantities' },
