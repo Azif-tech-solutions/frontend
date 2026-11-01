@@ -204,7 +204,7 @@ export interface CreateDirectStockEntryResponseData {
   kind: string;
   location: StockEntryLocation;
   intoLocation: StockEntryLocation;
-  supplier: StockEntryLocation;
+  supplier?: StockEntryLocation;
   manufacturer: StockEntryLocation;
   partnerName: string;
   partnerReference: string;
@@ -276,4 +276,62 @@ export interface DirectEntryListItem {
 
 export interface DirectEntryListResponse {
   data: Paged<DirectEntryListItem>;
+}
+
+
+export interface ReceiveRegisteredOutsourceProductsCredentials{
+ 
+  locationId: string;
+  intoLocationId: string;
+  manufacturerId: string;
+  // "manufacturerId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  partnerReference: string;
+  checkedBy: string;
+  receivedDate: string;
+  lines: 
+    {
+      stockItemId: string;
+      quantity: number;
+      inputVatRate: number;
+      batchNo: string;
+      expiryDate: string;
+    }[]
+}
+
+export interface ReceiveRegisteredOutsourceProductsResponse{
+  data: CreateDirectStockEntryResponseData;
+}
+
+
+export interface OutsourceReceiptFilterField {
+  key: string;
+  label: string;
+  type: string;
+  operators: string[];
+  options: unknown[];
+  lookup: unknown | null;
+  facetable: boolean;
+  sortable: boolean;
+  qualifierAliases: string[];
+}
+
+export interface OutsourceReceiptFilterSort {
+  field: string;
+  dir: string;
+}
+
+export interface OutsourceReceiptFilterData {
+  fields: OutsourceReceiptFilterField[];
+  collections: unknown[];
+  primaryDate: string;
+  defaultSort: OutsourceReceiptFilterSort[];
+  periodPresets: string[];
+}
+
+export interface OutsourceReceiptFilterResponse {
+  data: OutsourceReceiptFilterData;
+}
+
+export interface OutsourceReceiptListResponse{
+  data:Paged<DirectEntryListItem>
 }

@@ -47,6 +47,7 @@ import ShowroomTransfer from './showroom/ShowroomTransfer'
 import Returns from './showroom/Returns'
 import GeneralTransferReport from './showroom/GeneralTransferReport'
 import ShowroomVATReport from './showroom/ShowroomVATReport'
+import OutsourceStockRegister from './showroom/OutsourceStockRegister'
 
 // ── 5.3 Account ──
 import AccountCashFlow from './account/AccountCashFlow'
@@ -198,6 +199,7 @@ export const screens = {
   's.returns': Returns,
   's.transferreport': GeneralTransferReport,
   's.vat': ShowroomVATReport,
+  's.register': OutsourceStockRegister,
 
   // 5.3 Account (Credit Petty Cash and Fund Petty Cash are the same feature per PRD)
   'a.cashflow': AccountCashFlow,

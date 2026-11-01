@@ -116,7 +116,10 @@ export const baseModules = [
           { id: 's.cards.nongroup', label: 'Non-Group', view: 's.cards', params: { grouped: false }, ref: '5.2.4', description: 'Ungrouped stock and bin card' },
         ],
       },
+      { id: 's.register', label: 'Outsource Stock Register', icon: 'package', view: 's.register', ref: '5.2.11', description: 'Register Outsource products ' },
+
       { id: 's.outsource', label: 'Outsource Stock', icon: 'external-link', view: 's.outsource', ref: '5.2.5', description: 'Stock sourced outside company production' },
+      
       { id: 's.compstock', label: 'Comprehensive Stock Report', icon: 'clipboard-list', view: 's.compstock', ref: '5.2.6', description: 'Full showroom stock position and value' },
       { id: 's.transfer', label: 'Showroom-To-Showroom Transfer', icon: 'arrow-left-right', view: 's.transfer', ref: '5.2.7', description: 'Move stock between showrooms' },
       {

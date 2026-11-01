@@ -9,6 +9,7 @@ import { UpdateDefaultReceivingAndSellingAreas } from "./types/ShowroomTypes.ts"
 import { ShowroomLookupPickerWithAreasCredentials,ShowroomLookupPickerWithAreasResponse } from "./types/ShowroomTypes.ts";
 import { AddAreaToShowRoomCredentials, CreateShowroomCredentials, CreateShowroomResponse, ListShowroomCredentials, ListShowroomResponse} from "./types/ShowroomTypes.ts";
 import { StatusChangeCredentials, StatusChangeResponse } from "./types/ShowroomTypes.ts";
+import { ReceiveRegisteredOutsourceProductsCredentials,ReceiveRegisteredOutsourceProductsResponse,OutsourceReceiptListResponse,OutsourceReceiptFilterResponse } from "./types/ShowroomTypes.ts";
 /** invoice-related endpoints. Only the endpoint-specific logic lives here. */
 export default class ShowroomApi extends BaseApi {
   constructor() {
@@ -105,6 +106,34 @@ export default class ShowroomApi extends BaseApi {
     const data = await this.request<DirectEntryFilterResponse>("/direct-entries/filters", {
       method: "GET",
       auth: true,
+    });
+    return data;
+  }
+
+  async receiveOutsourceStock(b:ReceiveRegisteredOutsourceProductsCredentials){
+    //this creates an outsource  stock receipt
+    const data = await this.request<ReceiveRegisteredOutsourceProductsResponse>("/outsource-receipts", {
+      method: "POST",
+      auth: true,
+      body: b,
+    });
+    return data;
+  }
+
+  async getOutsourceReceiptFilters(){
+    //q should be the filter gotten from the filter endpoint
+    const data = await this.request<OutsourceReceiptFilterResponse>("/outsource-receipts/filters", {
+      method: "GET",
+      auth: true,
+    });
+    return data;
+  }
+  async listOutsourceReceipts(q:any){
+    //q should be the filter gotten from the filter endpoint
+    const data = await this.request<OutsourceReceiptListResponse>("/outsource-receipts", {
+      method: "GET",
+      auth: true,
+      query: q,
     });
     return data;
   }
