@@ -404,8 +404,17 @@ export interface StockTransferResponseLine {
   qtyReceived: number | null;
   qtyRejected: number | null;
   outstanding: number;
-  fromLocation: unknown;
-  receivedIntoLocation: unknown;
+  fromLocation: unknown|{
+    id: string;
+    code: string;
+    name: string;
+  };
+   receivedIntoLocation: unknown|{
+    id: string;
+    code: string;
+    name: string;
+    // type: string;
+  };
   batchNo: string | null;
   rejectionNote: string | null;
 }
@@ -506,4 +515,19 @@ interface ReorderReportSingleItem{
 
 export interface ReorderReportResponseData{
   data:Paged<ReorderReportSingleItem>;
+}
+
+
+export interface ReceiveStockTransferCredentials{
+  receivedDate: string;
+  note: string;
+  lines: 
+    {
+      stockTransferLineId: string;
+      qtyReceived: number;
+      qtyRejected: number;
+      rejectionNote: string;
+      receivedIntoLocationId: string;
+    }[]
+  
 }

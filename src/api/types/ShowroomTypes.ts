@@ -335,3 +335,68 @@ export interface OutsourceReceiptFilterResponse {
 export interface OutsourceReceiptListResponse{
   data:Paged<DirectEntryListItem>
 }
+
+
+
+
+
+
+export interface ShowroomTransferFilterOption {
+  value: string;
+  label: string;
+}
+
+export interface ShowroomTransferFilterField {
+  key: string;
+  label: string;
+  type: string;
+  operators: string[];
+  options: ShowroomTransferFilterOption[];
+  lookup: string | null;
+  facetable: boolean;
+  sortable: boolean;
+  qualifierAliases: string[];
+}
+
+export interface ShowroomTransferFilterSort {
+  field: string;
+  dir: string;
+}
+
+export interface ShowroomTransferFilterData {
+  fields: ShowroomTransferFilterField[];
+  collections: unknown[];
+  primaryDate: string;
+  defaultSort: ShowroomTransferFilterSort[];
+  periodPresets: string[];
+}
+
+export interface ShowroomTransferFilterResponse {
+  data: ShowroomTransferFilterData;
+}
+
+
+export interface ShowroomTransferListItem {
+  transfer: StockEntryLocation;
+  lineId: string;
+  date: string;
+  source: string;
+  sourceType: string;
+  destination: string;
+  destinationType: string;
+  route: string;
+  driver: string;
+  vehicle: string;
+  productCode: string;
+  product: string;
+  qtySent: number;
+  qtyReceived: number;
+  qtyRejected: number;
+  unit: string;
+  receivedDate: string;
+  status: string;
+}
+
+export interface ShowroomTransferListResponse {
+  data: Paged<ShowroomTransferListItem>;
+}

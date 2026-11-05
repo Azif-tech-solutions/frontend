@@ -6,6 +6,7 @@ import {DirectEntryListResponse} from "./types/ShowroomTypes.ts";
 import {DirectEntryFilterResponse} from "./types/ShowroomTypes.ts";
 import { CreateDirectStockEntryCredentials, CreateDirectStockEntryResponse } from "./types/ShowroomTypes.ts";
 import { UpdateDefaultReceivingAndSellingAreas } from "./types/ShowroomTypes.ts";
+import { ShowroomTransferFilterResponse,ShowroomTransferListResponse } from "./types/ShowroomTypes.ts";
 import { ShowroomLookupPickerWithAreasCredentials,ShowroomLookupPickerWithAreasResponse } from "./types/ShowroomTypes.ts";
 import { AddAreaToShowRoomCredentials, CreateShowroomCredentials, CreateShowroomResponse, ListShowroomCredentials, ListShowroomResponse} from "./types/ShowroomTypes.ts";
 import { StatusChangeCredentials, StatusChangeResponse } from "./types/ShowroomTypes.ts";
@@ -131,6 +132,24 @@ export default class ShowroomApi extends BaseApi {
   async listOutsourceReceipts(q:any){
     //q should be the filter gotten from the filter endpoint
     const data = await this.request<OutsourceReceiptListResponse>("/outsource-receipts", {
+      method: "GET",
+      auth: true,
+      query: q,
+    });
+    return data;
+  }
+
+  async getShowroomTranserFilters(){
+    //q should be the filter gotten from the filter endpoint
+    const data = await this.request<ShowroomTransferFilterResponse>("/reports/transfers/filters", {
+      method: "GET",
+      auth: true,
+    });
+    return data;
+  }
+  async listShowroomTransfers(q:any){
+    //q should be the filter gotten from the filter endpoint
+    const data = await this.request<ShowroomTransferListResponse>("/reports/transfers", {
       method: "GET",
       auth: true,
       query: q,
