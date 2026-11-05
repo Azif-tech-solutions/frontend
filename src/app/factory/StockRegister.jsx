@@ -376,7 +376,7 @@ function RegisterForm({ kind, onBack, crumbs, onDone, onGoToFactories, onGoToCat
     </FormShell>
   )
 }
-const PAGE_SIZE = 20
+const PAGE_SIZE = 2
 
 export default function StockRegister({ leaf, moduleLabel, parentLabel, onNavigate }) {
   const { categories, factories, units, showToast } = useStore()

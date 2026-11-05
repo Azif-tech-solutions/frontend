@@ -147,12 +147,18 @@ export class BaseApi {
    * @throws        ApiError if the server returns a non-2xx status.
    */
 
-    private async send<T = unknown>(
-    path: string,
-    { method = "GET", body, headers, query, signal, resource , auth = false, }: RequestOptions = {}
-  ): Promise<T> {
-    const url = new URL(`${this.buildRoute(resource)}/${path.replace(/^\/+/, "")}`);
-
+  //   private async send<T = unknown>(
+  //   path: string,
+  //   { method = "GET", body, headers, query, signal, resource , auth = false, }: RequestOptions = {}
+  // ): Promise<T> {
+  //   const url = new URL(`${this.buildRoute(resource)}/${path.replace(/^\/+/, "")}`);
+private async send<T = unknown>(
+  path: string,
+  { method = "GET", body, headers, query, signal, resource, auth = false }: RequestOptions = {}
+): Promise<T> {
+  const route = this.buildRoute(resource);
+  const suffix = path.replace(/^\/+/, "");
+  const url = new URL(suffix ? `${route}/${suffix}` : route);
     if (query) {
       Object.entries(query).forEach(([key, value]) => {
         if (value !== undefined) url.searchParams.set(key, String(value));
@@ -171,6 +177,8 @@ export class BaseApi {
       }
       requestHeaders.Authorization = `Bearer ${accessToken}`;
     }
+
+    console.log(url.toString())
 
     const response = await fetch(url.toString(), {
       method,

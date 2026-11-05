@@ -10,6 +10,8 @@ import { ShowroomTransferFilterResponse,ShowroomTransferListResponse } from "./t
 import { ShowroomLookupPickerWithAreasCredentials,ShowroomLookupPickerWithAreasResponse } from "./types/ShowroomTypes.ts";
 import { AddAreaToShowRoomCredentials, CreateShowroomCredentials, CreateShowroomResponse, ListShowroomCredentials, ListShowroomResponse} from "./types/ShowroomTypes.ts";
 import { StatusChangeCredentials, StatusChangeResponse } from "./types/ShowroomTypes.ts";
+import { RecordShowroomReturnCredentials, RecordShowroomReturnResponse } from "./types/ShowroomTypes.ts";
+import { CustomerReturnFilterResponse,CustomerReturnListResponse } from "./types/ShowroomTypes.ts";
 import { ReceiveRegisteredOutsourceProductsCredentials,ReceiveRegisteredOutsourceProductsResponse,OutsourceReceiptListResponse,OutsourceReceiptFilterResponse } from "./types/ShowroomTypes.ts";
 /** invoice-related endpoints. Only the endpoint-specific logic lives here. */
 export default class ShowroomApi extends BaseApi {
@@ -153,6 +155,44 @@ export default class ShowroomApi extends BaseApi {
       method: "GET",
       auth: true,
       query: q,
+    });
+    return data;
+  }
+
+  async createShowroomReturn(b:RecordShowroomReturnCredentials){
+    //this creates a showroom return
+    const data = await this.request<RecordShowroomReturnResponse>("/returns", {
+      method: "POST",
+      auth: true,
+      body: b,
+    });
+    return data;
+  }
+
+  async getCustomerReturnFilters(){
+    //q should be the filter gotten from the filter endpoint
+    const data = await this.request<CustomerReturnFilterResponse>("/returns/filters", {
+      method: "GET",
+      auth: true,
+    });
+    return data;
+  }
+
+  async listCustomerReturns(q:any){
+    //q should be the filter gotten from the filter endpoint
+    const data = await this.request<CustomerReturnListResponse>("/returns", {
+      method: "GET",
+      auth: true,
+      query: q,
+    });
+    return data;
+  }
+
+  async getReturnsListFilters(){
+    //q should be the filter gotten from the filter endpoint
+    const data = await this.request<CustomerReturnFilterResponse>("/returns/filters", {
+      method: "GET",
+      auth: true,
     });
     return data;
   }

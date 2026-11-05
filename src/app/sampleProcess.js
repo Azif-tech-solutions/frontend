@@ -84,13 +84,13 @@ export const correspondents = [
 ]
 
 export const regions = [
-  { value: 'lagos-mainland', label: 'Lagos Mainland' },
-  { value: 'lagos-island', label: 'Lagos Island' },
-  { value: 'north-central', label: 'North Central' },
-  { value: 'north-west', label: 'North West' },
-  { value: 'south-east', label: 'South East' },
-  { value: 'south-south', label: 'South South' },
-  { value: 'south-west', label: 'South West' },
+  { value: 'Lagos Mainland', label: 'Lagos Mainland' },
+  { value: 'Lagos Island', label: 'Lagos Island' },
+  { value: 'North Central', label: 'North Central' },
+  { value: 'North West', label: 'North West' },
+  { value: 'South East', label: 'South East' },
+  { value: 'South South', label: 'South South' },
+  { value: 'South West', label: 'South West' },
 ]
 
 /** §5.5.9 — VAT configuration per showroom. */
