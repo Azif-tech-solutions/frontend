@@ -10,7 +10,7 @@ import { movementReportFilterCredentials,movementReportResponse } from "./types/
 import { groupCardFilterCredentials,StockLedgerResponse,StockBinLedgerResponse } from "./types/InventoryTypes.ts";
 import { StockAndGroupBinCardFilterCredentials,StockLedgerCardSingleProductResponse,BinLedgerSingleProductResponse } from "./types/InventoryTypes.ts";
 import { ReorderReportFilterCredential,ReorderReportResponseData } from "./types/InventoryTypes.ts";
-
+import { ReceiveStockTransferCredentials } from "./types/InventoryTypes.ts";
 /**
  * Lists the page already has, used to turn ids from the API into the labels
  * the register shows. Categories and units are { value, label } option lists
@@ -235,5 +235,23 @@ const data = await this.request<BinLedgerSingleProductResponse>(`/stock/card/${i
 }
 
 
+
+async getStockTransferWithLines(id: string) {
+  const data = await this.request<CreateStockTransferResponse>(`/stock/transfers/${id}`, {
+    method: "GET",
+    auth: true,
+  });
+  return data;
+}
+
+async receiveStockTransfer(id: string, d: ReceiveStockTransferCredentials) {
+  //accept and/or reject per line;rejected goods go back to the source
+  const data = await this.request<CreateStockTransferResponse>(`/stock/transfers/${id}/receive`, {
+    method: "POST",
+    auth: true,
+    body: d,
+  });
+  return data;
+}
 
 }

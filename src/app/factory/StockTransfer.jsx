@@ -1038,7 +1038,7 @@ export default function StockTransfer({ leaf, moduleLabel, parentLabel }) {
   // Source: factories and showrooms, tagged so the type is obvious.
   const sourceOptions = [
     ...factories.map((f) => ({ value: f.id, label: `Factory · ${f.name}` })),
-    ...showrooms.map((s) => ({ value: s.value, label: `Showroom · ${s.label}` })),
+    
   ]
 
   // Destination: factories and showrooms, minus whatever is the source.
@@ -1209,7 +1209,7 @@ export default function StockTransfer({ leaf, moduleLabel, parentLabel }) {
         crumbs={[moduleLabel, parentLabel]}
         title={leaf?.label || 'Stock Transfer'}
         icon={leaf?.icon}
-        description="Transfer products from a factory or showroom to another factory or showroom. Completing a transfer generates a waybill with a unique reference number for the driver."
+        description="Transfer products from a factory to another factory or showroom. Completing a transfer generates a waybill with a unique reference number for the driver."
         submitLabel="Confirm transfer"
         loading={submitting}
         onCancel={() => setRows([blank()])}
@@ -1251,14 +1251,14 @@ export default function StockTransfer({ leaf, moduleLabel, parentLabel }) {
           </>
         }
       >
-        <Panel title="Route" description="Where the goods are leaving from and where they are going — each end may be a factory or a showroom.">
+        <Panel title="Route" description="Where the goods are leaving from and where they are going.">
           <FieldSet columns={3}>
             <Select
               label="Source"
               options={sourceOptions}
               value={sourceId}
               onChange={(e) => changeSource(e.target.value)}
-              placeholder={showroomsLoading ? 'Loading…' : 'Select factory or showroom…'}
+              placeholder={showroomsLoading ? 'Loading…' : 'Select factory'}
             />
             <Select
               label="Destination"

@@ -18,10 +18,11 @@ import AccountApi from '../../api/AccountApi.js'
 import InventoryApi from '../../api/InventoryApi.js'
 import Loader from '../../ds/components/core/Loader.jsx'
 import FactoryApi from '../../api/FactoryApi.js'
-
+import ShowroomApi from '../../api/ShowroomApi.js'
 const accountApi = new AccountApi()
 const inventoryApi = new InventoryApi()
 const factoryApi = new FactoryApi()
+const showroomApi = new ShowroomApi()
 
 const TABS = [
   { value: 'finished', label: 'Finished products', icon: 'package' },
@@ -375,7 +376,7 @@ function RegisterForm({ kind, onBack, crumbs, onDone, onGoToFactories, onGoToCat
     </FormShell>
   )
 }
-const PAGE_SIZE = 20
+const PAGE_SIZE = 2
 
 export default function StockRegister({ leaf, moduleLabel, parentLabel, onNavigate }) {
   const { categories, factories, units, showToast } = useStore()
