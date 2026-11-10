@@ -11,6 +11,8 @@ import { groupCardFilterCredentials,StockLedgerResponse,StockBinLedgerResponse }
 import { StockAndGroupBinCardFilterCredentials,StockLedgerCardSingleProductResponse,BinLedgerSingleProductResponse } from "./types/InventoryTypes.ts";
 import { ReorderReportFilterCredential,ReorderReportResponseData } from "./types/InventoryTypes.ts";
 import { ReceiveStockTransferCredentials } from "./types/InventoryTypes.ts";
+import { StockReceiptsReportsCredentials,StockReceiptsReportsResponse } from "./types/InventoryTypes.ts";
+import { ListStockComprehensiveReportCredentials,ListStockComprehensiveReportResponse } from "./types/InventoryTypes.ts";
 /**
  * Lists the page already has, used to turn ids from the API into the labels
  * the register shows. Categories and units are { value, label } option lists
@@ -254,4 +256,23 @@ async receiveStockTransfer(id: string, d: ReceiveStockTransferCredentials) {
   return data;
 }
 
+async listStockReceiptsReports(d: StockReceiptsReportsCredentials) {
+  //Material/recipe receive report -linked from Factory and Production's Reports menu
+  const data = await this.request<StockReceiptsReportsResponse>("/stock/receipts", {
+    method: "GET",
+    auth: true,
+    query: d,
+  });
+  return data;
+}
+async listStockComprehensiveReport(d: ListStockComprehensiveReportCredentials) {
+  //Stock comprehensive report -linked from Inventory's Reports menu
+  //(by categoryor,for finished goods,by Group)
+  const data = await this.request<ListStockComprehensiveReportResponse>("/stock/comprehensive-report", {
+    method: "GET",
+    auth: true,
+    query: d,
+  });
+  return data;
+}
 }

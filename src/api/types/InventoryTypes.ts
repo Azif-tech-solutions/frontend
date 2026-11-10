@@ -531,3 +531,61 @@ export interface ReceiveStockTransferCredentials{
     }[]
   
 }
+
+export interface StockReceiptsReportsCredentials{
+  locationId?:string;
+  condition?:string;
+  page:number;
+  size:number;
+}
+
+interface StockReceipts{
+  id:string;
+  ref:string;
+  stockItem:{
+    id:string;
+    code:string;
+    name:string;
+    itemType?:string;
+  };
+  supplier:{
+    id:string;
+    name:string;
+    code:string;
+  };
+  manufacturer:{
+    id:string;
+    name:string;
+    code:string;
+  }
+  quantity:number;
+  unitCost:number;
+  manufacturedDate:string;
+  expiryDate:string;
+  verifiedBy?: { 
+    id: string;
+    name: string;
+    email: string;
+  },
+  offloadedAt: string;
+  condition: string;
+  supplierInvoiceRef: string;
+  inputVatRate: number;
+  inputVatAmount: number
+
+} 
+
+export interface StockReceiptsReportsResponse{
+  data:Paged<StockReceipts>;
+}
+
+export interface ListStockComprehensiveReportCredentials{
+  locationId?:string;
+  view?:string;//CATEGORY OR GROUP
+  page:number;
+  size:number;
+}
+
+export interface ListStockComprehensiveReportResponse{
+  data:Paged<{lineNumber:number,groupingLabel:string,stockDetail:string,quantityLeft:number,unitCost:number,totalCost:number}[]>;
+}
