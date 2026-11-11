@@ -320,3 +320,208 @@ export interface MatchSnippet {
   field: string;
   snippet: string;
 }
+
+
+
+export interface BankAccountLocation {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface BankAccount {
+  id: string;
+  code: string;
+  bankName: string;
+  branch: string;
+  accountName: string;
+  accountNumber: string;
+  accountNumberMasked: string;
+  accountType: string;
+  currencyCode: string;
+  sortCodeOrBic: string;
+  authorisedSignatory: string;
+  relationshipManager: string;
+  dateOpened: string;
+  openingBalance: number;
+  openingBalanceDate: string;
+  currentBalance: number;
+  location: BankAccountLocation;
+  status: string;
+  createdAt: string;
+}
+
+export type BankAccountType = 'COLLECTIONS'|'SINGLE'|'PAYROLL'|'CURRENT'|'SAVINGS';
+
+
+export interface CreateBankAccountCredentials {
+  bankName: string;
+  branch: string;
+  accountName: string;
+  accountNumber: string;
+  accountType: BankAccountType;
+  currencyCode: string;
+  sortCodeOrBic: string;
+  authorisedSignatory: string;
+  relationshipManager: string;
+  dateOpened: string;
+  openingBalance: number;
+  openingBalanceDate: string;
+  locationId: string;
+  active: boolean;
+}
+
+export interface GenericBankAccountResponse {
+  data: BankAccount;
+}
+
+
+
+export  interface UpdateBankAccountCredentials{
+   bankName: string;
+  branch: string;
+  accountName: string;
+  accountNumber: string;
+  sortCodeOrBic: string,
+  authorisedSignatory: string,
+  relationshipManager: string,
+  dateOpened: string,
+  locationId: string
+}
+
+
+export interface EditBankAccountStatusCredentials{
+  status: "ACTIVE" | "DORMANT";
+}
+
+export interface ListBankAccountsCredentials{
+  q?:string;
+  status?:'ACTIVE'|'DORMANT';
+  locationId?:string;
+  currencyCode?:string;
+}
+
+export interface ListBankAccountRespsonse{
+  data:BankAccount[]
+}
+
+
+
+export interface BankStatementFilterOption {
+  value: string;
+  label: string;
+}
+
+export interface BankStatementFilterField {
+  key: string;
+  label: string;
+  type: string;
+  operators: string[];
+  options: BankStatementFilterOption[];
+  lookup: string | null;
+  facetable: boolean;
+  sortable: boolean;
+  qualifierAliases: string[];
+}
+
+export interface BankStatementFilterSort {
+  field: string;
+  dir: string;
+}
+
+export interface BankStatementFilterData {
+  fields: BankStatementFilterField[];
+  collections: unknown[];
+  primaryDate: string;
+  defaultSort: BankStatementFilterSort[];
+  periodPresets: string[];
+}
+
+export interface BankStatementFilterResponse {
+  data: BankStatementFilterData;
+}
+
+export interface BankStatementListItem {
+  id: string;
+  date: string;
+  reference: string;
+  description: string;
+  type: string;
+  credit: number;
+  debit: number;
+  balance: number;
+  sourceType: string;
+  expenseCategoryName: string;
+  createdAt: string;
+}
+
+export interface BankStatementListResponse {
+  data: Paged<BankStatementListItem>;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+//CASHFLOW FILTER
+
+export interface AccountCashFlowFilterOption {
+  value: string;
+  label: string;
+}
+
+export interface AccountCashFlowFilterField {
+  key: string;
+  label: string;
+  type: string;
+  operators: string[];
+  options: AccountCashFlowFilterOption[];
+  lookup: string | null;
+  facetable: boolean;
+  sortable: boolean;
+  qualifierAliases: string[];
+}
+
+export interface AccountCashFlowFilterSort {
+  field: string;
+  dir: string;
+}
+
+export interface AccountCashFlowFilterData {
+  fields: AccountCashFlowFilterField[];
+  collections: unknown[];
+  primaryDate: string;
+  defaultSort: AccountCashFlowFilterSort[];
+  periodPresets: string[];
+}
+
+export interface AccountCashFlowFilterResponse {
+  data: AccountCashFlowFilterData;
+}
+
+export interface AccountCashFlowListItem {
+  sn: number;
+  id: string;
+  date: string;
+  reference: string;
+  remark: string;
+  inflow: number;
+  outflow: number;
+  balance: number;
+  accountCode: string;
+  accountName: string;
+  kind: string;
+  sourceType: string;
+  expenseCategoryName: string;
+}
+
+export interface AccountCashFlowResponse {
+  data: Paged<AccountCashFlowListItem>;
+}
