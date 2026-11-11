@@ -3,8 +3,12 @@
 import { getBaseUrl } from "./config.ts";
 import { BaseApi } from "./config.ts";
 import { FundsDisbursementFiltersResponse } from "./types/AccountTypes.ts";
+import { AccountCashFlowFilterResponse,AccountCashFlowResponse,AccountCashFlowListItem } from "./types/AccountTypes.ts";
 import { FundsDisbursementResponse } from "./types/AccountTypes.ts";
 import { ExpenseCategoryFieldsResponse, CashFlowStatementResponse } from "./types/AccountTypes.ts";
+import { BankStatementFilterResponse,BankStatementListResponse } from "./types/AccountTypes.ts";
+import {ListBankAccountsCredentials,ListBankAccountRespsonse} from "./types/AccountTypes.ts";
+import { CreateBankAccountCredentials,GenericBankAccountResponse,EditBankAccountStatusCredentials,UpdateBankAccountCredentials } from "./types/AccountTypes.ts";
 import { HsnSectionsResponse, IsicSectionsResponse, VatCategoryResponse, ListExpenseCategoriesRequest, ListExpenseCategoriesResponse, SingleExpenseCategoriesResponse, EditExpenseCategoriesRequest, UpdateStatusExpenseCategoriesRequest } from "./types/AccountTypes.ts";
 /** Account-related endpoints. Only the endpoint-specific logic lives here. */
 export default class AccountApi extends BaseApi {
@@ -138,5 +142,88 @@ async getFundsDisbursements(
   );
 
   return data;
+}
+
+async listBankAccounts(params: ListBankAccountsCredentials) {
+  const data = await this.request<ListBankAccountRespsonse>("/bank-accounts", {
+    method: "GET",
+    auth: true,
+    query: params
+  });
+  return data
+}
+
+
+async createBankAccount(params: CreateBankAccountCredentials) {
+  const data = await this.request<GenericBankAccountResponse>("/bank-accounts", {
+    method: "POST",
+    auth: true,
+    body: params,
+  });
+  return data
+
+}
+
+async editBankAccountStatus(id: string, params: EditBankAccountStatusCredentials) {
+  const data = await this.request<GenericBankAccountResponse>(`/bank-accounts/${id}/status`, {
+    method: "PUT",
+    auth: true,
+    body: params,
+  });
+  return data
+
+
+}
+
+async updateBankAccount(id: string, params: UpdateBankAccountCredentials) {
+  const data = await this.request<GenericBankAccountResponse>(`/bank-accounts/${id}`, {
+    method: "PUT",
+    auth: true,
+    body: params,
+  });
+  return data
+}
+async retreiveBankAccountById(id: string) {
+  const data = await this.request<GenericBankAccountResponse>(`/bank-accounts/${id}`, {
+    method: "GET",
+    auth: true,
+  });
+  return data
+}
+
+async retreiveBankStatementList(id: string,q:any){
+
+  const data = await this.request<BankStatementListResponse>(`/bank-accounts/${id}/statement`, {
+    method: "GET",
+    auth: true,
+    query: q,
+  });
+  return data
+}
+
+async retreiveBankStatementFilter(id: string){
+  const data = await this.request<BankStatementFilterResponse>(`/bank-accounts/statement/filters`, {
+    method: "GET",
+    auth: true,
+  });
+  return data
+}
+
+async retreiveAccountCashFlowFilters(){
+  const data = await this.request<AccountCashFlowFilterResponse>(`/cash-flow/filters`, {
+    method: "GET",
+    auth: true,
+  });
+  return data
+}
+
+async retreiveAccountCashFlow(query:any){
+  const data = await this.request<AccountCashFlowResponse>(`/cash-flow`, {
+    method: "GET",
+    auth: true,
+    query: query,
+  });
+  return data
+
 }
 }

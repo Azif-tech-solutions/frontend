@@ -12,6 +12,7 @@ import { AddAreaToShowRoomCredentials, CreateShowroomCredentials, CreateShowroom
 import { StatusChangeCredentials, StatusChangeResponse } from "./types/ShowroomTypes.ts";
 import { RecordShowroomReturnCredentials, RecordShowroomReturnResponse } from "./types/ShowroomTypes.ts";
 import { CustomerReturnFilterResponse,CustomerReturnListResponse } from "./types/ShowroomTypes.ts";
+import { GetShowroomComprehensiveReportCredentials,GetShowroomComprehensiveReportResponse } from "./types/ShowroomTypes.ts";
 import { ReceiveRegisteredOutsourceProductsCredentials,ReceiveRegisteredOutsourceProductsResponse,OutsourceReceiptListResponse,OutsourceReceiptFilterResponse } from "./types/ShowroomTypes.ts";
 /** invoice-related endpoints. Only the endpoint-specific logic lives here. */
 export default class ShowroomApi extends BaseApi {
@@ -193,6 +194,15 @@ export default class ShowroomApi extends BaseApi {
     const data = await this.request<CustomerReturnFilterResponse>("/returns/filters", {
       method: "GET",
       auth: true,
+    });
+    return data;
+  }
+
+  async getShowroomComprehensiveReport(q:GetShowroomComprehensiveReportCredentials){
+    const data = await this.request<GetShowroomComprehensiveReportResponse>("/reports/comprehensive-stock", {
+      method: "GET",
+      auth: true,
+      query: q,
     });
     return data;
   }

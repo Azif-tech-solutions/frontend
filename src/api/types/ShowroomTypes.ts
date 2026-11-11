@@ -545,3 +545,37 @@ export interface CustomerReturnListItem {
 export interface CustomerReturnListResponse {
   data: Paged<CustomerReturnListItem>;
 }
+
+export interface GetShowroomComprehensiveReportCredentials{
+  locationId?: string;
+  page: number;
+  size: string;
+}
+
+export interface GetShowroomComprehensiveReportResponse{
+  data: Paged<{
+    ln: number,
+    stockItem: {
+      id: number,
+      code: string,
+      name: string,
+      itemType: string
+    },
+    group: string,
+    source: string,
+    location: {
+      id: number,
+      code: string,
+      name: string,
+      type: string
+    },
+    area: string,
+    qty: number,
+    unit: string,
+    unitCost: number,
+    totalCost: number,
+    sellingPrice: number | null,
+    retailValue: number | null
+
+  }[]>;
+}
