@@ -525,3 +525,255 @@ export interface AccountCashFlowListItem {
 export interface AccountCashFlowResponse {
   data: Paged<AccountCashFlowListItem>;
 }
+
+
+type CASH_ACCOUNT_KIND = 'PETTY_CASH'|'TILL'|'VAULT';
+type CASH_ACCOUNT_STATUS = 'ACTIVE'|'INACTIVE';
+ interface CashAccountLocation {
+  id: string;
+  code: string;
+  name: string;
+}
+
+ interface CashAccount {
+  id: string;
+  code: string;
+  name: string;
+  kind: CASH_ACCOUNT_KIND;
+  location: CashAccountLocation;
+  currencyCode: string;
+  openingBalance: number;
+  currentBalance: number;
+  floatLimit: number;
+  belowFloat: boolean;
+  posTerminalRef: string;
+  posSettlementBankAccount: CashAccountLocation;
+  status: CASH_ACCOUNT_STATUS;
+  createdAt: string;
+}
+
+export interface CreateCashAccountCredentials {
+  code: string;
+  name: string;
+  kind: CASH_ACCOUNT_KIND;
+  locationId: string;
+  currencyCode: string;
+  openingBalance: number;
+  floatLimit: number;
+ 
+  posTerminalRef: string;
+  posSettlementBankAccountIdId: string;
+}
+
+export interface SingleCashAccountResponse {
+  data: CashAccount;
+}
+
+export interface ListCashAccountsCredentials {
+  q?:string;
+  kind?:CASH_ACCOUNT_KIND[];
+  locationId?:string;
+  currencyCode?:string;
+  status?:CASH_ACCOUNT_STATUS;
+}
+export interface ListCashAccountsResponse {
+  data: CashAccount[];
+}
+
+export interface ChangeCashAccountStatusCredentials {
+  status: CASH_ACCOUNT_STATUS;
+}
+
+
+export interface EditCashAccountCredentials {
+
+  name: string;
+  floatLimit: number;
+
+  posTerminalRef: string;
+  posSettlementBankAccountIdId: string;
+}
+
+
+
+
+
+
+
+
+export interface GetPettyCashAccountStatementCredentials {
+  pettyCashAccountId?: string;
+  locationId?: string;
+  from?:string;
+  to?:string;
+  page?:number;
+  size?:number;
+}
+
+
+
+
+
+export interface PettyCashStatementAccount {
+  id: string;
+  code: string;
+  name: string;
+  locationName: string;
+}
+
+export interface PettyCashStatementPeriod {
+  from: string;
+  to: string;
+}
+
+export interface PettyCashLedgerItem {
+  date: string;
+  ref: string;
+  description: string;
+  category: string | null;
+  direction: string;
+  in: number;
+  out: number;
+  balance: number;
+  accountCode: string;
+}
+
+export interface PettyCashLedger {
+  items: PettyCashLedgerItem[];
+  page: number;
+  size: number;
+  totalItems: number;
+  totalPages: number;
+  totalIsEstimate: boolean;
+  facets: unknown | null;
+  summary: unknown | null;
+  meta: {
+    appliedFilters: Record<string, unknown>;
+    ignoredQualifiers: string[];
+    suggestions: string[];
+    matches: Record<string, unknown>;
+  };
+}
+
+export interface PettyCashFunding {
+  openingBalance: number;
+  entries: unknown[];
+  totalAvailable: number;
+}
+
+export interface PettyCashUtilisationCategory {
+  category: string;
+  amount: number;
+}
+
+export interface PettyCashStatement {
+  funding: PettyCashFunding;
+  utilisationByCategory: PettyCashUtilisationCategory[];
+  totalUtilised: number;
+  closingBalance: number;
+  utilisedPct: number;
+}
+
+export interface AccountPettyCashStatementResponse {
+  data: {
+    accounts: PettyCashStatementAccount[];
+    period: PettyCashStatementPeriod;
+    ledger: PettyCashLedger;
+    statement: PettyCashStatement;
+  };
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+export interface PettyCashFilterOption {
+  value: string;
+  label: string;
+}
+
+export interface PettyCashFilterField {
+  key: string;
+  label: string;
+  type: string;
+  operators: string[];
+  options: PettyCashFilterOption[];
+  lookup: string | null;
+  facetable: boolean;
+  sortable: boolean;
+  qualifierAliases: string[];
+}
+
+export interface PettyCashFilterSort {
+  field: string;
+  dir: string;
+}
+
+export interface PettyCashFilterData {
+  fields: PettyCashFilterField[];
+  collections: unknown[];
+  primaryDate: string;
+  defaultSort: PettyCashFilterSort[];
+  periodPresets: string[];
+}
+
+export interface PettyCashHistoryFilterResponse {
+  data: PettyCashFilterData;
+}
+
+
+
+export interface PettyCashHistoryItem {
+  sn: number;
+  id: string;
+  date: string;
+  ref: string;
+  description: string;
+  category: string;
+  paidTo: string;
+  approvedBy: string;
+  amount: number;
+  source: string;
+  status: string;
+  pettyCashAccountCode: string;
+}
+
+export interface PettyCashHistoryFacet {
+  value: string;
+  label: string;
+  count: number;
+}
+
+export interface PettyCashHistoryMatch {
+  field: string;
+  snippet: string;
+}
+
+export interface PettyCashHistoryMeta {
+  appliedFilters: Record<string, unknown>;
+  ignoredQualifiers: string[];
+  suggestions: string[];
+  matches: Record<string, PettyCashHistoryMatch[]>;
+}
+
+export interface PettyCashHistoryResponse {
+  data: {
+    items: PettyCashHistoryItem[];
+    page: number;
+    size: number;
+    totalItems: number;
+    totalPages: number;
+    totalIsEstimate: boolean;
+    facets: Record<string, PettyCashHistoryFacet[]> | null;
+    summary: Record<string, unknown> | null;
+    meta: PettyCashHistoryMeta;
+  };
+}

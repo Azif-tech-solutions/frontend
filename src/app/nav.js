@@ -154,6 +154,8 @@ export const baseModules = [
       { id: 'a.tenderable', label: 'Tenderable', icon: 'coins', view: 'a.tenderable', ref: '5.3.6', description: 'Cash on hand available to be tendered' },
       { id: 'a.expguide', label: 'Expenses/Payment List Guide', icon: 'list-checks', view: 'a.expguide', ref: '5.3.7', description: 'Maintain the expense category list' },
       { id: 'a.bankregister', label: 'Bank Register', icon: 'building-2', view: 'a.bankregister', ref: '5.3.8', description: 'Register company bank accounts' },
+      { id: 'a.petty.register', label: 'Petty Cash Register', icon: 'plus-circle', view: 'a.petty.register', ref: '5.3.15', description: 'Register petty cash accounts' },
+
       { id: 'a.creditpetty', label: 'Credit Petty Cash', icon: 'plus-circle', view: 'a.creditpetty', ref: '5.3.9', description: 'Top up a petty cash float' },
       { id: 'a.posconfirm', label: 'POS/Fund Transfer Confirmation', icon: 'check-check', view: 'a.posconfirm', ref: '5.3.10', description: 'Confirm POS and transfer payments received' },
       { id: 'a.fundsawaiting', label: 'Funds Awaiting', icon: 'hourglass', view: 'a.fundsawaiting', ref: '5.3.11', description: 'Funds pending confirmation' },

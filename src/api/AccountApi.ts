@@ -6,8 +6,10 @@ import { FundsDisbursementFiltersResponse } from "./types/AccountTypes.ts";
 import { AccountCashFlowFilterResponse,AccountCashFlowResponse,AccountCashFlowListItem } from "./types/AccountTypes.ts";
 import { FundsDisbursementResponse } from "./types/AccountTypes.ts";
 import { ExpenseCategoryFieldsResponse, CashFlowStatementResponse } from "./types/AccountTypes.ts";
+import {GetPettyCashAccountStatementCredentials,AccountPettyCashStatementResponse,PettyCashHistoryResponse} from "./types/AccountTypes.ts";
+import { ListCashAccountsCredentials, SingleCashAccountResponse, CreateCashAccountCredentials, EditCashAccountCredentials,ListCashAccountsResponse,ChangeCashAccountStatusCredentials } from "./types/AccountTypes.ts";
 import { BankStatementFilterResponse,BankStatementListResponse } from "./types/AccountTypes.ts";
-import {ListBankAccountsCredentials,ListBankAccountRespsonse} from "./types/AccountTypes.ts";
+import {ListBankAccountsCredentials,ListBankAccountRespsonse,PettyCashHistoryFilterResponse} from "./types/AccountTypes.ts";
 import { CreateBankAccountCredentials,GenericBankAccountResponse,EditBankAccountStatusCredentials,UpdateBankAccountCredentials } from "./types/AccountTypes.ts";
 import { HsnSectionsResponse, IsicSectionsResponse, VatCategoryResponse, ListExpenseCategoriesRequest, ListExpenseCategoriesResponse, SingleExpenseCategoriesResponse, EditExpenseCategoriesRequest, UpdateStatusExpenseCategoriesRequest } from "./types/AccountTypes.ts";
 /** Account-related endpoints. Only the endpoint-specific logic lives here. */
@@ -225,5 +227,67 @@ async retreiveAccountCashFlow(query:any){
   });
   return data
 
+}
+
+async listCashAccounts(params: ListCashAccountsCredentials) {
+  const data = await this.request<ListCashAccountsResponse>("/cash-accounts", {
+    method: "GET",
+    auth: true,
+    query: params
+  });
+  return data
+}
+
+async createCashAccount(params: CreateCashAccountCredentials) {
+  const data = await this.request<SingleCashAccountResponse>("/cash-accounts", {
+    method: "POST",
+    auth: true,
+    body: params,
+  });
+  return data
+}
+async editCashAccountStatus(id: string, params: ChangeCashAccountStatusCredentials) {
+  const data = await this.request<SingleCashAccountResponse>(`/cash-accounts/${id}/status`, {
+    method: "PUT",
+    auth: true,
+    body: params,
+  });
+  return data
+}
+
+async editCashAccount(id: string, params: EditCashAccountCredentials) {
+  const data = await this.request<SingleCashAccountResponse>(`/cash-accounts/${id}`, {
+    method: "PUT",
+    auth: true,
+    body: params,
+  });
+  return data
+}
+
+
+async getPettyCashAccountStatement(params: GetPettyCashAccountStatementCredentials) {
+  const data = await this.request<AccountPettyCashStatementResponse>(`/petty-cash/statement`, {
+    method: "GET",
+    auth: true,
+    query: params,
+  });
+  return data
+}
+
+async getPettyCashAccountFilters(){
+  const data = await this.request<PettyCashHistoryFilterResponse>(`/petty-cash/payments/history/filters`, {
+    method: "GET",
+    auth: true,
+  });
+  return data
+}
+
+async getPettyCashAccountHistory(query:any){
+  const data = await this.request<PettyCashHistoryResponse>(`/petty-cash/payments/history`, {
+    method: "GET",
+    auth: true,
+    query: query,
+  });
+  return data
 }
 }
