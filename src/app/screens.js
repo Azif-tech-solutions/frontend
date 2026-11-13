@@ -63,7 +63,7 @@ import POSConfirmation from './account/POSConfirmation'
 import FundsAwaitingBranch from './account/FundsAwaitingBranch'
 import PettyCashPayment from './account/PettyCashPayment'
 import PendingPettyCash from './account/PendingPettyCash'
-
+import PettyCashRegisterScreen from './account/PettyCashRegisterScreen'
 // ── 5.4 Cashier ──
 import SalesReport from './cashier/SalesReport'
 import ProFormaInvoice from './cashier/ProFormaInvoice'
@@ -216,6 +216,8 @@ export const screens = {
   'a.petty.fund': FundPettyCash,
   'a.petty.payment': PettyCashPayment,
   'a.petty.pending': PendingPettyCash,
+  'a.petty.register': PettyCashRegisterScreen,
+
 
   // 5.4 Cashier
   'c.sales': SalesReport,
