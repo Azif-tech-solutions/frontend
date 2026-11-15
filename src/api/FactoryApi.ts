@@ -130,6 +130,8 @@ export default class FactoryApi extends BaseApi {
   }
 
   
+
+  
  
 
  async createManufacturer(credentials: CreateManufacturerCredentials) {
