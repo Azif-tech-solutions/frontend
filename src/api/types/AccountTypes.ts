@@ -1409,3 +1409,99 @@ export interface CreateWalletWithdrawalResponse {
     createdAt: string;
   };
 }
+
+interface PettyCashAllocation{
+   
+    id: string;
+    ref: string;
+    date: string;
+    sourceName: string;
+    destinationLocation: {
+      kind: string;
+      id: string;
+      code: string;
+      name: string;
+      
+    },
+    destinationAccountCode: string;
+    purpose: string;
+    sentBy: {
+      id: string;
+      name: string;
+      email: string;
+    };
+    amount: number;
+    status: string;
+    respondedBy: {
+      id: string;
+      name: string;
+      email: string;
+    };
+    respondedOn: string;
+    note: string;
+  }
+
+export interface CreatePettyCashAllocationCredentials{
+    sourceKind: "BANK"|"CASH";
+    sourceBankAccountId: string;
+    sourceCashAccountId: string;
+    destinationPettyCashAccountId: string;
+    amount: number;
+    purpose: string;
+}
+
+export interface SinglePettyCashAllocationResponse{
+    data: PettyCashAllocation;
+}
+
+export interface CreatePettyCashAllocationResponse extends SinglePettyCashAllocationResponse{
+}
+
+export interface RejectPettyCashAllocationRequest{
+    note: string;
+}
+
+export interface RejectPettyCashAllocationResponse extends SinglePettyCashAllocationResponse{
+}
+
+export interface AcceptPettyCashAllocationResponse extends SinglePettyCashAllocationResponse{
+  
+}
+
+export interface ListPettyCashAllocationResponse{
+    data: Paged<PettyCashAllocation>;
+}
+
+
+
+export interface PettyCashAllocationFilterResponse {
+  data: {
+    fields: PettyCashAllocationFilterField[];
+    collections: unknown[];
+    primaryDate: string;
+    defaultSort: PettyCashAllocationSort[];
+    periodPresets: string[];
+  };
+}
+
+export interface PettyCashAllocationFilterField {
+  key: string;
+  label: string;
+  type: string;
+  operators: string[];
+  options: PettyCashAllocationFilterOption[];
+  lookup: unknown | null;
+  facetable: boolean;
+  sortable: boolean;
+  qualifierAliases: string[];
+}
+
+export interface PettyCashAllocationFilterOption {
+  value: string;
+  label: string;
+}
+
+export interface PettyCashAllocationSort {
+  field: string;
+  dir: "asc" | "desc";
+}

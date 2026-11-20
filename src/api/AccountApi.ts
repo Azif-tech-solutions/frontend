@@ -17,7 +17,7 @@ import {GetTenderableGeneralReportCredentials,GetTenderableGeneralReportResponse
 import {GetTenderableWalletFundsCredentials,GetTenderableWalletFundsResponse} from "./types/AccountTypes.ts";
 import {GetTenderablePayableCreedntials,GetTenderablePayableResponse,GetTenderableReceiptsResponse} from "./types/AccountTypes.ts";
 import {CreateExpenseCategoriesRequest,CreateExpenseCategoriesResponse,CreateWalletWithdrawalRequest,CreateWalletWithdrawalResponse,CreateWalletWithdrawalStatusCredentials} from "./types/AccountTypes.ts";
-
+import { PettyCashAllocationFilterResponse,ListPettyCashAllocationResponse,CreatePettyCashAllocationResponse,AcceptPettyCashAllocationResponse,RejectPettyCashAllocationResponse,RejectPettyCashAllocationRequest,CreatePettyCashAllocationCredentials } from "./types/AccountTypes.ts";
 import { ListFundsDisbursementsResponse,ConfirmFundsDisbursementRequest,RejectFundsDisbursementRequest,SingleFundsDisbursementResponse, CreateFundsDisbursementRequest } from "./types/AccountTypes.ts";
 import { HsnSectionsResponse, IsicSectionsResponse, VatCategoryResponse, ListExpenseCategoriesRequest, ListExpenseCategoriesResponse, SingleExpenseCategoriesResponse, EditExpenseCategoriesRequest, UpdateStatusExpenseCategoriesRequest } from "./types/AccountTypes.ts";
 /** Account-related endpoints. Only the endpoint-specific logic lives here. */
@@ -544,4 +544,46 @@ async getTenderablePayable(params: GetTenderablePayableCreedntials) {
     return data
   }
 
+  async getPettyCashAllocationFilter(){
+    const data = await this.request<PettyCashAllocationFilterResponse>(`/petty-cash/allocations/filters`, {
+      method: "GET",
+      auth: true,
+    });
+    return data
+  }
+  async listPettyCashAllocation(params: any) {
+
+    const data = await this.request<ListPettyCashAllocationResponse>("/petty-cash/allocations", {
+      method: "GET",
+      auth: true,
+      query: params
+    });
+    return data
+  }
+
+  async acceptPettyCashAllocation(id: string) {
+    const data = await this.request<AcceptPettyCashAllocationResponse>(`/petty-cash/allocations/${id}/accept`, {
+      method: "POST",
+      auth: true,
+      // body: params,
+    });
+    return data
+  }
+  async rejectPettyCashAllocation(id: string, params: RejectPettyCashAllocationRequest) {
+    const data = await this.request<RejectPettyCashAllocationResponse>(`/petty-cash/allocations/${id}/reject`, {
+      method: "POST",
+      auth: true,
+      body: params,
+    });
+    return data
+  }
+
+  async createPettyCashAllocation(params: CreatePettyCashAllocationCredentials) {
+    const data = await this.request<CreatePettyCashAllocationResponse>("/petty-cash/allocations", {
+      method: "POST",
+      auth: true,
+      body: params,
+    });
+    return data
+  }
 }
