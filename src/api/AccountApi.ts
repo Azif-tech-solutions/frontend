@@ -9,8 +9,16 @@ import { ExpenseCategoryFieldsResponse, CashFlowStatementResponse } from "./type
 import {GetPettyCashAccountStatementCredentials,AccountPettyCashStatementResponse,PettyCashHistoryResponse} from "./types/AccountTypes.ts";
 import { ListCashAccountsCredentials, SingleCashAccountResponse, CreateCashAccountCredentials, EditCashAccountCredentials,ListCashAccountsResponse,ChangeCashAccountStatusCredentials } from "./types/AccountTypes.ts";
 import { BankStatementFilterResponse,BankStatementListResponse } from "./types/AccountTypes.ts";
-import {ListBankAccountsCredentials,ListBankAccountRespsonse,PettyCashHistoryFilterResponse} from "./types/AccountTypes.ts";
+import {ListBankAccountsCredentials,ListBankAccountRespsonse,PettyCashHistoryFilterResponse,PettyCashPaymentsCredentials,SinglePettyCashPaymentResponse} from "./types/AccountTypes.ts";
+import { ListPettyCashFundingResponse,SinglePettyCashFundingResponse,CreatePettyCashFunding,PettyCashFundingFilterResponse } from "./types/AccountTypes.ts";
 import { CreateBankAccountCredentials,GenericBankAccountResponse,EditBankAccountStatusCredentials,UpdateBankAccountCredentials } from "./types/AccountTypes.ts";
+import { CreateRunningCostCredentials,ReverseRunningCostCredentials,RejectRunningCostCredentials,SingleRunningCostResponse,ListRunningCostResponse,GetRunningCostFiltersResponse } from "./types/AccountTypes.ts";
+import {GetTenderableGeneralReportCredentials,GetTenderableGeneralReportResponse} from "./types/AccountTypes.ts";
+import {GetTenderableWalletFundsCredentials,GetTenderableWalletFundsResponse} from "./types/AccountTypes.ts";
+import {GetTenderablePayableCreedntials,GetTenderablePayableResponse,GetTenderableReceiptsResponse} from "./types/AccountTypes.ts";
+import {CreateExpenseCategoriesRequest,CreateExpenseCategoriesResponse,CreateWalletWithdrawalRequest,CreateWalletWithdrawalResponse,CreateWalletWithdrawalStatusCredentials} from "./types/AccountTypes.ts";
+import { PettyCashAllocationFilterResponse,ListPettyCashAllocationResponse,CreatePettyCashAllocationResponse,AcceptPettyCashAllocationResponse,RejectPettyCashAllocationResponse,RejectPettyCashAllocationRequest,CreatePettyCashAllocationCredentials } from "./types/AccountTypes.ts";
+import { ListFundsDisbursementsResponse,ConfirmFundsDisbursementRequest,RejectFundsDisbursementRequest,SingleFundsDisbursementResponse, CreateFundsDisbursementRequest } from "./types/AccountTypes.ts";
 import { HsnSectionsResponse, IsicSectionsResponse, VatCategoryResponse, ListExpenseCategoriesRequest, ListExpenseCategoriesResponse, SingleExpenseCategoriesResponse, EditExpenseCategoriesRequest, UpdateStatusExpenseCategoriesRequest } from "./types/AccountTypes.ts";
 /** Account-related endpoints. Only the endpoint-specific logic lives here. */
 export default class AccountApi extends BaseApi {
@@ -74,6 +82,15 @@ export default class AccountApi extends BaseApi {
     const data = await this.request<SingleExpenseCategoriesResponse>(`/expense-categories/${id}`, {
       method: "GET",
       auth: true,
+    });
+    return data.data
+  }
+
+  async createExpenseCategories(body: CreateExpenseCategoriesRequest) {
+    const data = await this.request<CreateExpenseCategoriesResponse>("/expense-categories", {
+      method: "POST",
+      auth: true,
+      body: body,
     });
     return data.data
   }
@@ -290,4 +307,283 @@ async getPettyCashAccountHistory(query:any){
   });
   return data
 }
+
+async createRunningCost(params: CreateRunningCostCredentials) {
+  //submit should be set to true if the running cost should be created and false to create a draft
+  const data = await this.request<SingleRunningCostResponse>("/running-costs", {
+    method: "POST",
+    auth: true,
+    body: params,
+  });
+  return data
+}
+
+async reverseRunningCost(id:string,params: ReverseRunningCostCredentials) {
+  //Reverse an approved cost; the money goes back to the paying account
+  const data = await this.request<SingleRunningCostResponse>(`/running-costs/${id}/reverse`, {
+    method: "POST",
+    auth: true,
+    body: params,
+  });
+  return data
+}
+
+  async rejectRunningCost(id:string,params: RejectRunningCostCredentials) {
+    //Reject (reason required); nothing is paid
+  const data = await this.request<SingleRunningCostResponse>(`/running-costs/${id}/reject`, {
+    method: "POST",
+    auth: true,
+    body: params,
+  });
+  return data
+}
+
+async approveRunningCost(id:string) {
+  //Approve and pay (not by the submitter,unless an administrator and the setting allows)
+  const data = await this.request<SingleRunningCostResponse>(`/running-costs/${id}/approve`, {
+    method: "POST",
+    auth: true,
+    // body: params,
+  });
+  return data
+}
+
+
+async submitRunningCost(id:string) {
+  //Submit a rejected cost for approval or to submit a draft for approval
+  const data = await this.request<SingleRunningCostResponse>(`/running-costs/${id}/submit`, {
+    method: "POST",
+    auth: true,
+    // body: params,
+  });
+  return data
+}
+
+async editRejected_or_DraftRunningCost(id:string,params: CreateRunningCostCredentials) {
+  //Edit a rejected running cost or draft
+  const data = await this.request<SingleRunningCostResponse>(`/running-costs/${id}`, {
+    method: "PUT",
+    auth: true,
+    body: params,
+  });
+  return data
+}
+ async deleteDraftRunningCost(id:string) {
+  //Delete a draft running cost
+  const data = await this.request<any>(`/running-costs/${id}`, {
+    method: "DELETE",
+    auth: true,
+  });
+  return data
+}
+
+
+async listRunningCosts(params: any) {
+  const data = await this.request<ListRunningCostResponse>("/running-costs", {
+    method: "GET",
+    auth: true,
+    query: params
+  });
+  return data
+}
+
+async getRunningCostFilters(){
+  const data = await this.request<GetRunningCostFiltersResponse>(`/running-costs/filters`, {
+    method: "GET",
+    auth: true,
+  });
+  return data
+}
+
+async listPettyCashFunding(params: any) {
+  const data = await this.request<ListPettyCashFundingResponse>("/petty-cash/fundings", {
+    method: "GET",
+    auth: true,
+    query: params
+  });
+  return data
+
+}
+
+async getPettyCashFundingFilter(){
+  const data = await this.request<PettyCashFundingFilterResponse>(`/petty-cash/fundings/filters`, {
+    method: "GET",
+    auth: true,
+  });
+  return data
+}
+
+async createPettyCashFunding(params: CreatePettyCashFunding) {
+  const data = await this.request<SinglePettyCashFundingResponse>("/petty-cash/fundings", {
+    method: "POST",
+    auth: true,
+    body: params,
+  });
+  return data
+}
+
+async getTenderableGeneralReport(params: GetTenderableGeneralReportCredentials) {
+  const data = await this.request<GetTenderableGeneralReportResponse>(`/tenderable/general-report`, {
+    method: "GET",
+    auth: true,
+    query: params,
+  });
+  return data
+}
+
+async getTenderablePayable(params: GetTenderablePayableCreedntials) {
+  const data = await this.request<GetTenderablePayableResponse>(`/tenderable/payable`, {
+    method: "GET",
+    auth: true,
+    query: params,
+  });
+  return data
+}
+  async getTenderableReceipt(params: GetTenderablePayableCreedntials) {
+    const data = await this.request<GetTenderableReceiptsResponse>(`/tenderable/receipts`, {
+      method: "GET",
+      auth: true,
+      query: params,
+    });
+    return data
+  }
+
+  async getTenderableWalletFunds(params: GetTenderableWalletFundsCredentials) {
+    const data = await this.request<GetTenderableWalletFundsResponse>(`/tenderable/wallet-funds`, {
+      method: "GET",
+      auth: true,
+      query: params,
+    });
+    return data
+  }
+
+  async getFundsDisbursementFiltersss(){
+    const data = await this.request<FundsDisbursementFiltersResponse>(`/fund-disbursements/filters`, {
+      method: "GET",
+      auth: true,
+    });
+    return data
+  }
+
+  async listFundsDisbursements(params: any) {
+    const data = await this.request<ListFundsDisbursementsResponse>("/fund-disbursements", {
+      method: "GET",
+      auth: true,
+      query: params
+    });
+    return data
+  }
+  async getFundsDisbursement(id: string) {
+    const data = await this.request<SingleFundsDisbursementResponse>(`/fund-disbursements/${id}`, {
+      method: "GET",
+      auth: true,
+    });
+    return data
+  }
+
+  async confirmFundsDisbursement(id: string, params: ConfirmFundsDisbursementRequest) {
+    const data = await this.request<SingleFundsDisbursementResponse>(`/fund-disbursements/${id}/confirm`, {
+      method: "POST",
+      auth: true,
+      body: params,
+    });
+    return data
+  }
+  async rejectFundsDisbursement(id: string, params: RejectFundsDisbursementRequest) {
+    const data = await this.request<SingleFundsDisbursementResponse>(`/fund-disbursements/${id}/reject`, {
+      method: "POST",
+      auth: true,
+      body: params,
+    });
+    return data
+  }
+
+  async sendFundsDisbursement(params: CreateFundsDisbursementRequest) {
+    const data = await this.request<SingleFundsDisbursementResponse>("/fund-disbursements", {
+      method: "POST",
+      auth: true,
+      body: params,
+    });
+    return data
+  }
+
+  async getPettyCashHistoryFilter(){
+    const data = await this.request<PettyCashHistoryFilterResponse>(`/petty-cash/payments/history/filters`, {
+      method: "GET",
+      auth: true,
+    });
+    return data
+  }
+
+  async getPettyCashHistory(params: any) {
+    const data = await this.request<PettyCashHistoryResponse>("/petty-cash/payments/history", {
+      method: "GET",
+      auth: true,
+      query: params
+    });
+    return data
+  }
+
+  async createPettyCashPayment(params: PettyCashPaymentsCredentials) {
+    const data = await this.request<SinglePettyCashPaymentResponse>("/petty-cash/payments", {
+      method: "POST",
+      auth: true,
+      body: params,
+    });
+    return data
+  }
+
+  async dealerWalletWithdrawal(params: CreateWalletWithdrawalRequest) {
+    //get the opt challend id from the otp api
+    //authorized user id from tenant members api
+    const data = await this.request<CreateWalletWithdrawalResponse>("/wallet-withdrawals", {
+      method: "POST",
+      auth: true,
+      body: params,
+    });
+    return data
+  }
+
+  async getPettyCashAllocationFilter(){
+    const data = await this.request<PettyCashAllocationFilterResponse>(`/petty-cash/allocations/filters`, {
+      method: "GET",
+      auth: true,
+    });
+    return data
+  }
+  async listPettyCashAllocation(params: any) {
+
+    const data = await this.request<ListPettyCashAllocationResponse>("/petty-cash/allocations", {
+      method: "GET",
+      auth: true,
+      query: params
+    });
+    return data
+  }
+
+  async acceptPettyCashAllocation(id: string) {
+    const data = await this.request<AcceptPettyCashAllocationResponse>(`/petty-cash/allocations/${id}/accept`, {
+      method: "POST",
+      auth: true,
+      // body: params,
+    });
+    return data
+  }
+  async rejectPettyCashAllocation(id: string, params: RejectPettyCashAllocationRequest) {
+    const data = await this.request<RejectPettyCashAllocationResponse>(`/petty-cash/allocations/${id}/reject`, {
+      method: "POST",
+      auth: true,
+      body: params,
+    });
+    return data
+  }
+
+  async createPettyCashAllocation(params: CreatePettyCashAllocationCredentials) {
+    const data = await this.request<CreatePettyCashAllocationResponse>("/petty-cash/allocations", {
+      method: "POST",
+      auth: true,
+      body: params,
+    });
+    return data
+  }
 }
