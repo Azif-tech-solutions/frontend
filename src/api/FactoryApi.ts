@@ -4,7 +4,7 @@ import { CreateCategoryCredentials, CreateCategoryResponse, ListCategoryResponse
 import {CreateManufacturerCredentials,CreateManufacturerResponse,ListManufacturerResponse,CreateUnitCredentials,CreateUnitResponse,ListUnitResponse} from "./types/FactoryTypes.ts";
 import { CreateFactoryCredentials, CreateFactoryResponse,ListFactoryResponse,CreateSupplierCredentials,CreateSupplierResponse,ListSupplierResponse,CreateRecipeCredentials } from "./types/FactoryTypes.ts";
 import {ListRecipesCredentrials,ListRecipesResponse } from "./types/FactoryTypes.ts";
-import {ListProductionRunCredentials,ListProductionRunResponse} from "./types/FactoryTypes.ts";
+import {ListProductionRunCredentials,ListProductionRunResponse,ProductionCostCalculationDetails} from "./types/FactoryTypes.ts";
 import { CreateRecipeResponse } from "./types/FactoryTypes.ts";
 import { CreateProductionCostCalculatorCredentials,CreateProductionCostCalculatorResponse,ListProductionTotalCostCredetials,ListProductionTotalCostResponse } from "./types/FactoryTypes.ts";
 import { CreateSpecialClientCredentials,CreateSpecialClientResponse,CreateSpecialProductionRunCredentials,CreateSpecialProductionRunResponse } from "./types/FactoryTypes.ts";
@@ -253,7 +253,42 @@ async listProductionCostRuns(query: ListProductionRunCredentials) {
   });
   return data;
 }
+async rejectProductionCostCalculation(id: string,rejectionReason:string) {
+  //does not really matter what it returns as far as it retunrs 200 code
+  const data = await this.request<any>(`/production/cost-calculator/${id}/reject`, {
+    method: "POST",
+    auth: true,
+    body: {rejectionReason},
+  });
+  return data;
+}
+async approveProductionCostCalculation(id: string) {
+  //does not really matter what it returns as far as it retunrs 200 code
+  const data = await this.request<any>(`/production/cost-calculator/${id}/approve`, {
+    method: "POST",
+    auth: true,
+  });
+  return data;
+}
 
+async getProductionCostCalculationRunDetail(id: string) {
+  const data = await this.request<ProductionCostCalculationDetails>(`/production/cost-calculator/${id}`, {
+    method: "GET",
+    auth: true,
+  });
+  return data;
+}
+
+async commitProductionCostCalculation(id: string) {
+  //only run after approval
+  //does not really matter what it returns as far as it retunrs 200 code
+  const data = await this.request<any>(`/production/runs`, {
+    method: "POST",
+    auth: true,
+    body: {"productionCostingId":id},
+  });
+  return data;
+}
 async listProductionTotalCost(query: ListProductionTotalCostCredetials) {
   // The backend wants recipeIds repeated: ?recipeIds=a&recipeIds=b
   const params = new URLSearchParams();

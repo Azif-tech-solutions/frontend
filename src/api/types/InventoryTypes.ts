@@ -589,3 +589,52 @@ export interface ListStockComprehensiveReportCredentials{
 export interface ListStockComprehensiveReportResponse{
   data:Paged<{lineNumber:number,groupingLabel:string,stockDetail:string,quantityLeft:number,unitCost:number,totalCost:number}[]>;
 }
+
+
+export interface PriceListPublishCredentials{
+  
+  effectiveFrom: string;
+  note: string;
+  entries: 
+    {
+      stockItemId: string;
+      retailPrice: number;
+      dealerPrice: number;
+    }[]
+  
+}
+
+
+export interface PriceListPublishResponse{
+   data: {
+    batchRef: string;
+    effectiveFrom: string;
+    count: number;
+    belowCostCount: number;
+    costVisible: boolean;
+  }
+}
+
+export interface PriceListProductHistoryCredentials{
+  stockItemId: string;
+  page: number;
+  size: number;
+}
+
+export interface PriceListProductHistoryResponse{
+  data: Paged<{
+     priceId: string;
+        retailPrice: number;
+        dealerPrice: number;
+        effectiveFrom: string;
+        batchRef: string;
+        note: string;
+        setBy: {
+          id: string; 
+          name: string;
+          email: string;
+        },
+        createdAt: string;
+        state: string; //CURRENT means this is the current price listing for the product
+  }>;
+}
