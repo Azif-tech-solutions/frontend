@@ -157,7 +157,7 @@ export const baseModules = [
       { id: 'a.petty.register', label: 'Petty Cash Register', icon: 'plus-circle', view: 'a.petty.register', ref: '5.3.15', description: 'Register petty cash accounts' },
 
       { id: 'a.creditpetty', label: 'Credit Petty Cash', icon: 'plus-circle', view: 'a.creditpetty', ref: '5.3.9', description: 'Top up a petty cash float' },
-      { id: 'a.posconfirm', label: 'POS/Fund Transfer Confirmation', icon: 'check-check', view: 'a.posconfirm', ref: '5.3.10', description: 'Confirm POS and transfer payments received' },
+      // { id: 'a.posconfirm', label: 'POS/Fund Transfer Confirmation', icon: 'check-check', view: 'a.posconfirm', ref: '5.3.10', description: 'Confirm POS and transfer payments received' },
       { id: 'a.fundsawaiting', label: 'Funds Awaiting', icon: 'hourglass', view: 'a.fundsawaiting', ref: '5.3.11', description: 'Funds pending confirmation' },
       {
         id: 'a.petty', label: 'Petty Cash', icon: 'piggy-bank', ref: '5.3.12–5.3.14',
