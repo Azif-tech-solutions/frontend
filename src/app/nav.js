@@ -157,7 +157,7 @@ export const baseModules = [
       { id: 'a.petty.register', label: 'Petty Cash Register', icon: 'plus-circle', view: 'a.petty.register', ref: '5.3.15', description: 'Register petty cash accounts' },
 
       { id: 'a.creditpetty', label: 'Credit Petty Cash', icon: 'plus-circle', view: 'a.creditpetty', ref: '5.3.9', description: 'Top up a petty cash float' },
-      { id: 'a.posconfirm', label: 'POS/Fund Transfer Confirmation', icon: 'check-check', view: 'a.posconfirm', ref: '5.3.10', description: 'Confirm POS and transfer payments received' },
+      // { id: 'a.posconfirm', label: 'POS/Fund Transfer Confirmation', icon: 'check-check', view: 'a.posconfirm', ref: '5.3.10', description: 'Confirm POS and transfer payments received' },
       { id: 'a.fundsawaiting', label: 'Funds Awaiting', icon: 'hourglass', view: 'a.fundsawaiting', ref: '5.3.11', description: 'Funds pending confirmation' },
       {
         id: 'a.petty', label: 'Petty Cash', icon: 'piggy-bank', ref: '5.3.12–5.3.14',
@@ -177,7 +177,8 @@ export const baseModules = [
     icon: 'scan-line',
     section: '5.4',
     items: [
-      { id: 'c.sales', label: 'Sales Report', icon: 'chart-column', view: 'c.sales', ref: '5.4.1', description: 'Sales by period, channel, and cashier' },
+      { id: 'c.sales.report', label: 'Sales Report', icon: 'chart-column', view: 'c.sales.report', ref: '5.4.1', description: 'Sales by period, channel, and cashier' },
+      { id: 'c.sales.management', label: 'Sales Management', icon: 'chart-column', view: 'c.sales.management', ref: '5.4.4', description: 'Sales Management' },
       { id: 'c.proforma', label: 'Pro-Forma Invoice', icon: 'file-text', view: 'c.proforma', ref: '5.4.2', description: 'Issue a quotation before sale' },
       { id: 'c.waybill', label: 'Generate Waybill', icon: 'truck', view: 'c.waybill', ref: '5.4.3', description: 'Produce a waybill for goods leaving' },
     ],

@@ -12,6 +12,8 @@ import { StockAndGroupBinCardFilterCredentials,StockLedgerCardSingleProductRespo
 import { ReorderReportFilterCredential,ReorderReportResponseData } from "./types/InventoryTypes.ts";
 import { ReceiveStockTransferCredentials } from "./types/InventoryTypes.ts";
 import { StockReceiptsReportsCredentials,StockReceiptsReportsResponse } from "./types/InventoryTypes.ts";
+import { PriceListPublishCredentials,PriceListPublishResponse } from "./types/InventoryTypes.ts";
+import { PriceListProductHistoryCredentials,PriceListProductHistoryResponse } from "./types/InventoryTypes.ts";
 import { ListStockComprehensiveReportCredentials,ListStockComprehensiveReportResponse } from "./types/InventoryTypes.ts";
 /**
  * Lists the page already has, used to turn ids from the API into the labels
@@ -275,4 +277,23 @@ async listStockComprehensiveReport(d: ListStockComprehensiveReportCredentials) {
   });
   return data;
 }
+
+async publishPriceList(d: PriceListPublishCredentials) {
+  const data = await this.request<PriceListPublishResponse>("/price-list/publish", {
+    method: "POST",
+    auth: true,
+    body: d,
+  });
+  return data;
+}
+
+async listPriceListProductHistory(d: PriceListProductHistoryCredentials) {
+  const data = await this.request<PriceListProductHistoryResponse>(`/stock-items/${d.stockItemId}/prices`, {
+    method: "GET",
+    auth: true,
+    query: d,
+  });
+  return data;
+}
+
 }

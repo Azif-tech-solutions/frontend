@@ -219,7 +219,7 @@ export interface ListSpecialProductionRunResponse {
 }
 export interface UpdateSpecialProdctionRunStatusCredentials {
   
-  status: string///ACTIVE ,PENDING OR DELIVERED
+  status: string///IN_PRODUCTION  OR DELIVERED
 }
 
 export interface UpdateSpecialProdctionRunStatusResponse {
@@ -310,8 +310,50 @@ export interface ListProductionRunCredentials {
   size: number;
 }
 
+export interface ProductionCostCalculationDetails {
+  data: {
+    id: string;
+    targetStockItem: {
+      id: string;
+      code: string;
+      name: string;
+      itemType: string;
+    };
+    recipe: any | null;
+    batchSizeQty: number;
+    materialsSnapshot: {
+      name: string;
+      quantity: number;
+      unitCost: number;
+      stockItemId: string;
+    }[];
+    overheadSnapshot: {
+      label: string;
+      amount: number;
+    }[];
+    computedUnitCost: number;
+    computedTotalCost: number;
+    status: "APPROVED" | "PENDING";
+    computedBy: {
+      id: string;
+      name: string;
+      email: string;
+    };
+    approvedBy: {
+      id: string;
+      name: string;
+      email: string;
+    } | null;
+    approvedAt: string | null;
+    rejectionReason: string | null;
+  };
+}
 export interface ListProductionRunResponse {
   data: Paged<ProductionRunResponseData>;
+}
+
+export interface RejectProductionCostCalculationCredentials{
+  rejectionReason:string;
 }
 
 export interface ListProductionTotalCostCredetials{
