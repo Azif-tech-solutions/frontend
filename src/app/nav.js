@@ -177,7 +177,8 @@ export const baseModules = [
     icon: 'scan-line',
     section: '5.4',
     items: [
-      { id: 'c.sales', label: 'Sales Report', icon: 'chart-column', view: 'c.sales', ref: '5.4.1', description: 'Sales by period, channel, and cashier' },
+      { id: 'c.sales.report', label: 'Sales Report', icon: 'chart-column', view: 'c.sales.report', ref: '5.4.1', description: 'Sales by period, channel, and cashier' },
+      { id: 'c.sales.management', label: 'Sales Management', icon: 'chart-column', view: 'c.sales.management', ref: '5.4.4', description: 'Sales Management' },
       { id: 'c.proforma', label: 'Pro-Forma Invoice', icon: 'file-text', view: 'c.proforma', ref: '5.4.2', description: 'Issue a quotation before sale' },
       { id: 'c.waybill', label: 'Generate Waybill', icon: 'truck', view: 'c.waybill', ref: '5.4.3', description: 'Produce a waybill for goods leaving' },
     ],

@@ -137,6 +137,7 @@ import Suppliers from './settings/Suppliers'
 import Units from './settings/Units'
 import Categories from './settings/Categories'
 import Manufacturers from './settings/Manufacturers'
+import Sales from './cashier/Sales'
 
 export const screens = {
   overview: Overview,
@@ -220,9 +221,10 @@ export const screens = {
 
 
   // 5.4 Cashier
-  'c.sales': SalesReport,
+  'c.sales.report': SalesReport,
   'c.proforma': ProFormaInvoice,
   'c.waybill': GenerateWaybill,
+  'c.sales.management': Sales,
 
   // 5.5 Process Guide
   'p.fx': ExchangeRate,

@@ -5,10 +5,11 @@
 
 import { getBaseUrl } from "./config.ts";
 import { BaseApi } from "./config.ts";
-import { GetCashierReportsSalesDailyCredentials, GetCashierReportsSalesDailyResponse, RejectDiscountProformasQuotationRequest, SingleSaleResponse } from "./types/CashierTypes.ts";
+import { GetCashierReportsSalesDailyCredentials, GetCashierReportsSalesDailyResponse, ListSalesResponse, ListSalesCredentials, RejectDiscountProformasQuotationRequest, SingleSaleResponse, CashierTillSessionResponse, CreateCashierTillSessions, CreateWaybillCredentials, AcknowledgeWaybillCredentials } from "./types/CashierTypes.ts";
 import {CreateProformasQuotationCredentials,CreateProformasQuotationResponse,SingleProformasQuotationResponse,DeclineProformasQuotationRequest,ConvertProformasQuotationRequest,ConvertProformasQuotationResponse} from "./types/CashierTypes.ts";  
 // import { Paged } from "../config";
-import { ListProformasQuotationCredentials, ListProformasQuotationsResponse } from "./types/CashierTypes.ts";
+import { ListProformasQuotationCredentials, ListProformasQuotationsResponse,UpdateSalesLinesCredentials,CloseTillSessionCredentials,SingleTillSessionResponse } from "./types/CashierTypes.ts";
+import { ListCashierTillSessionsResponse,ListCashierTillSessionsCredentials,SingleWaybillResponse,CancelWaybillCredentials ,ListWaybillsCredentials,ListWaybillsResponse} from "./types/CashierTypes.ts";
 import { LoadproformaSaleCredentials,CreateSaleInvoiceCredentials ,CompleteSaleCredentials,AbandonSaleCredentials,ShowroomCatalogueCredentials,ShowroomCatalogueResponse} from "./types/CashierTypes.ts";
 /** otp-related endpoints. Only the endpoint-specific logic lives here. */
 export default class CashierApi extends BaseApi {
@@ -201,12 +202,132 @@ export default class CashierApi extends BaseApi {
   }
   async getShowroomCatalogue(b:ShowroomCatalogueCredentials) {  
     // get sellable items at the showroom (defaults to the caller's open till's):price for the customer, available stock
-    const data = await this.request<ShowroomCatalogueResponse>("/showroom-catalogue", {  
+    const data = await this.request<ShowroomCatalogueResponse>("/catalogue", {  
       method: "GET",
       auth: true,
       query: b,
     });
     return data;
   }
+
+
+  async listSales(b: ListSalesCredentials) {  
+    // list all sales default COMPELETED,NEWWESTFIRST
+    const data = await this.request<ListSalesResponse>("/sales", {  
+      method: "GET",
+      auth: true,
+      query: b,
+    });
+    return data;
+  }
+  async replaceSalesLines(id:string,b:  UpdateSalesLinesCredentials) {  
+    // replace the cart's lines;prices come from the price list...
+    const data = await this.request<SingleSaleResponse>(`/sales/${id}/lines`, {  
+      method: "PUT",
+      auth: true,
+      body: b,
+    });
+    return data;
+  }
+
+  async createCashierTillSession(b: CreateCashierTillSessions) {  
+    // create a new till(a TILL cash account at a showroom) with an opening float
+    
+    const data = await this.request<CashierTillSessionResponse>("/till-sessions", {  
+      method: "POST",
+      auth: true,
+      body: b,
+    });
+    return data;
+  }
+  async closeCashierTillSession(id:string,b:  CloseTillSessionCredentials) {  
+    // close the till session
+    const data = await this.request<SingleTillSessionResponse>(`/till-sessions/${id}/close`, {  
+      method: "POST",
+      auth: true,
+      body: b,
+    });
+    return data;
+  }
+
+  async getTierTillSession(id:string) {  
+    // get the till session details
+    const data = await this.request<SingleTillSessionResponse>(`/till-sessions/${id}`, {  
+      method: "GET",
+      auth: true,
+    });
+    return data;
+  }
+
+  async getCurrentCashierTillSession() {  
+    // get the caller's current till session details
+    const data = await this.request<SingleTillSessionResponse>("/till-sessions/current", {  
+      method: "GET",
+      auth: true,
+    });
+    return data;
+  }
+
+  async listCashierTillSessions(b: ListCashierTillSessionsCredentials) {  
+    // list all till sessions
+    const data = await this.request<ListCashierTillSessionsResponse>("/till-sessions", {  
+      method: "GET",
+      auth: true,
+      query: b,
+    });
+    return data;
+  }
+
+  async createWaybill(b: CreateWaybillCredentials) {  
+    // create a new waybill. release outstanding goods againts a sale: a delivery (driver) or a collection (collector)
+    const data = await this.request<SingleWaybillResponse>("/waybills", {  
+      method: "POST",
+      auth: true,
+      body: b,
+    });
+    return data;
+  }
+
+  async cancelWaybill(id:string,b:CancelWaybillCredentials) {  
+    // cancel the waybill
+    const data = await this.request<SingleWaybillResponse>(`/waybills/${id}/cancel`, {  
+      method: "POST",
+      auth: true,
+      body: b,
+    });
+    return data;
+  }
+  async getWaybill(id:string) {  
+    // get the waybill details
+    const data = await this.request<SingleWaybillResponse>(`/waybills/${id}`, {  
+      method: "GET",
+      auth: true,
+    });
+    return data;
+  }
+
+  async listWaybills(b: ListWaybillsCredentials) {  
+    // list all waybills
+    const data = await this.request<ListWaybillsResponse>("/waybills", {  
+      method: "GET",
+      auth: true,
+      query: b,
+    });
+    return data;
+
+
+
+  }
+
+  async acknowledgeWaybill(id:string,b:AcknowledgeWaybillCredentials) {  
+    // acknowledge the waybill
+    const data = await this.request<SingleWaybillResponse>(`/waybills/${id}/acknowledge`, {  
+      method: "POST",
+      auth: true,
+      body: b,
+    });
+    return data;
+  }
+
 
 }

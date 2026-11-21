@@ -498,12 +498,288 @@ export interface ShowroomCatalogueResponse {
 
 export interface ListSalesCredentials{
   locationId?:string;
-  cashierUserId:string;
-  customerId:string;
+  cashierUserId?:string;
+  customerId?:string;
   status?:string;
   from?:string;
   to?:string;
   ref?:string; //txn orinv number
   page?: number;
   size?: number;
+}
+
+export interface ListSalesResponse {
+  data: Paged<{
+    id: string;
+    ref: string;
+    status: string;
+    channel: string;
+    date: string;
+    completedAt: string | null;
+    location: {
+      kind: string;
+      id: string;
+      code: string;
+      name: string;
+    };
+    till: {
+      kind: string;
+      id: string;
+      code: string;
+      name: string;
+    };
+    cashier: {
+      id: string;
+      name: string;
+      email: string;
+    };
+    customer: {
+      kind: string;
+      id: string;
+      code: string;
+      name: string;
+    };
+    customerName: string;
+    customerType: string;
+    items: number;
+    units: number;
+    net: number;
+    vat: number;
+    total: number;
+    methods: string[];
+    onAccount: number;
+    invoice: {
+      kind: string;
+      id: string;
+      code: string;
+      name: string;
+    } | null;
+    invoiceNumber: string | null;
+  }>;
+}
+
+export interface UpdateSalesLinesCredentials{
+  // id: string;
+  version: number;
+  lines: {
+    stockItemId: string;
+    quantity: number;
+  }[];
+}
+
+
+interface TillSession{
+    id: string;
+    till: {
+      kind: string;
+      id: string;
+      code: string;
+      name: string;
+    };
+    location: {
+      kind: string;
+      id: string;
+      code: string;
+      name: string;
+    };
+    cashier: {
+      id: string;
+      name: string;
+      email: string;
+    };
+    status: string;
+    openedAt: string;
+    openingFloat: number;
+    closedAt: string | null;
+    closedBy: {
+      id: string;
+      name: string;
+      email: string;
+    } | null;
+    countedCash: number | null;
+    expectedCash: number | null;
+    variance: number | null;
+    closeNote: string | null;
+    forceClosed: boolean;
+    running: {
+      salesCount: number;
+      cashTaken: number;
+      cardTaken: number;
+      transferTaken: number;
+      walletTaken: number;
+      depositTaken: number;
+      onAccount: number;
+      expectedCashNow: number;
+    };
+  };
+export interface CreateCashierTillSessions{
+  cashAccountId:string;
+  openingFloat:number
+}
+
+
+
+export interface CashierTillSessionResponse {
+  data: TillSession
+}
+
+export interface ListCashierTillSessionCredentials{
+  locationId?:string;
+  cashierUserId?:string;
+  status?:string;
+  from?:string;
+  to?:string;
+  page?: number;
+  size?: number;
+
+}
+
+
+export interface ListCashierTillSessionsResponse {
+  data: Paged<{
+    id: string;
+    till: {
+      kind: string;
+      id: string;
+      code: string;
+      name: string;
+    };
+    location: {
+      kind: string;
+      id: string;
+      code: string;
+      name: string;
+    };
+    cashier: {
+      id: string;
+      name: string;
+      email: string;
+    };
+    status: string;
+    openedAt: string;
+    openingFloat: number;
+    closedAt: string | null;
+    closedBy: {
+      id: string;
+      name: string;
+      email: string;
+    } | null;
+    countedCash: number | null;
+    expectedCash: number | null;
+    variance: number | null;
+    closeNote: string | null;
+    forceClosed: boolean;
+    running: {
+      salesCount: number;
+      cashTaken: number;
+      cardTaken: number;
+      transferTaken: number;
+      walletTaken: number;
+      depositTaken: number;
+      onAccount: number;
+      expectedCashNow: number;
+    };
+  }>;
+}
+
+export interface CloseTillSessionCredentials{
+  countedCash:number;
+  note:string;
+}
+
+export interface SingleTillSessionResponse {
+  data: TillSession
+}
+
+interface Waybill{
+    id: string;
+    ref: string;
+    sale: { kind: string; id: string; code: string; name: string };
+    saleRef: string;
+    invoiceNumber: string;
+    location: { kind: string; id: string; code: string; name: string };
+    customerName: string;
+    releaseMethod: string;
+    releaseDate: string;
+    driver: { kind: string; id: string; code: string; name: string };
+    driverName: string;
+    vehicleNumber: string;
+    collectedBy: string;
+    deliveryAddress: string;
+    status: string;
+    receivedBy: string;
+    receivedAt: string | null;
+    acknowledgementNote: string | null;
+    cancelledReason: string | null;
+    issuedBy: {
+      id: string;
+      name: string;
+      email: string;
+    };
+    lines: {
+      stockItem: { kind: string; id: string; code: string; name: string };
+      product: string;
+      unit: string;
+      quantity: number;
+      from: { kind: string; id: string; code: string; name: string };
+      stillOutstanding: number;
+    }[];
+  };
+export interface CreateWaybillCredentials {
+  saleId: string;
+  releaseMethod: string;
+  releaseDate: string;
+  driverId: string;
+  vehicleNumber: string;
+  collectedBy: string;
+  deliveryAddress: string;
+  lines: [
+    {
+      saleLineId: string;//right now sale line id is not being returned from a sale  line so just use sale no for now
+      quantity: number;
+      fromLocationId: string;
+    }
+  ]
+}
+export interface SingleWaybillResponse {
+  data: Waybill
+}
+
+export interface CancelWaybillCredentials {
+  reason: string;
+}
+
+
+export interface AcknowledgeWaybillCredentials {
+  receivedBy: string;
+  receivedAt: string;//date
+  note: string;
+}
+
+
+export interface ListWaybillsCredentials {
+  locationId?:string;
+  saleId?:string;
+  status?:string;
+  driverId?:string;
+  page?: number;
+  size?: number;
+} 
+
+export interface ListWaybillsResponse {
+  data: Paged<{
+    id: string;
+    ref: string;
+    sale: { kind: string; id: string; code: string; name: string };
+    saleRef: string;
+    invoiceNumber: string;
+    location: { kind: string; id: string; code: string; name: string };
+    customerName: string;
+    releaseMethod: string;
+    releaseDate: string;
+    driverName: string;
+    collectedBy: string;
+    units: number;
+    status: string;
+  }>;
 }
