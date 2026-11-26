@@ -190,14 +190,33 @@ private async send<T = unknown>(
     const text = await response.text();
     const data = text ? JSON.parse(text) : null;
 
+    // if (!response.ok) {
+    //   throw new ApiError(
+    //     response.status,
+    //     data,
+    //     data?.error?.message ?? data?.message ?? `Request failed with status ${response.status}`,
+    //     data?.error?.code
+    //   );
+    // }
+    function formatDetails(details: unknown): string {
+     if (!details || typeof details !== "object") return "";
+      return Object.entries(details as Record<string, unknown>)
+        .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(", ") : String(value)}`)
+        .join("; ");
+    }
+
     if (!response.ok) {
+      const baseMessage =
+        data?.error?.message ?? data?.message ?? `Request failed with status ${response.status}`;
+      const details = formatDetails(data?.error?.details);
+
       throw new ApiError(
         response.status,
         data,
-        data?.error?.message ?? data?.message ?? `Request failed with status ${response.status}`,
+        details ? `${baseMessage} (${details})` : baseMessage,
         data?.error?.code
       );
-    }
+    }``
     return data as T;
   }
   protected async request<T = unknown>(path: string, options: RequestOptions = {}): Promise<T> {
