@@ -596,7 +596,7 @@ function ProformaForm({
     let cancelled = false
     setLoadingProducts(true)
     inventoryApi
-      .listStockItems(locationId, 'OUTSOURCED', { size: 200 })
+      .listStockItems(locationId, null, { size: 200 })
       .then((res) => {
         if (cancelled) return
         const list = res.data?.items || []

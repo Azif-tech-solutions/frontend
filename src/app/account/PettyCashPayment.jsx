@@ -173,6 +173,8 @@
 //     </FormShell>
 //   )
 // }
+
+
 import { useEffect, useState } from 'react'
 import { Badge } from '../../ds/components/core/Badge.jsx'
 import { Button } from '../../ds/components/core/Button.jsx'
@@ -220,6 +222,11 @@ const BALANCE_TYPES = [
   { value: 'DEPOSIT', label: 'Deposit' },
 ]
 
+const PAYOUT_KINDS = [
+  { value: 'CASH', label: 'Cash (petty cash account)' },
+  { value: 'BANK', label: 'Bank transfer' },
+]
+
 function val(payload) {
   if (payload == null) return payload
   if (typeof payload === 'object') {
@@ -237,6 +244,14 @@ function cashOption(a) {
       a.location?.name ? ` (${a.location.name})` : ''
     }`,
     currentBalance: a.currentBalance || 0,
+  }
+}
+
+function bankOption(b) {
+  if (!b?.id) return null
+  return {
+    value: b.id,
+    label: `${b.code} · ${b.bankName} – ${b.accountName}`,
   }
 }
 
@@ -277,6 +292,10 @@ export default function PettyCashPayment({ leaf, moduleLabel, parentLabel }) {
   )
   const [wDate, setWDate] = useState(today())
   const [wNote, setWNote] = useState('')
+  const [bankAccounts, setBankAccounts] = useState([])
+  const [wPayoutKind, setWPayoutKind] = useState('CASH')
+  const [wPayoutCashAccountId, setWPayoutCashAccountId] = useState('')
+  const [wPayoutBankAccountId, setWPayoutBankAccountId] = useState('')
 
   // ── OTP flow state ──────────────────────────────────────
   const [otpStage, setOtpStage] = useState('none')
@@ -345,16 +364,27 @@ export default function PettyCashPayment({ leaf, moduleLabel, parentLabel }) {
           }))
         })
         .catch(() => []),
+
+      accountApi
+        .listBankAccounts({ status: 'ACTIVE' })
+        .then((res) => {
+          const list = Array.isArray(res.data) ? res.data : []
+          return list.map(bankOption).filter(Boolean)
+        })
+        .catch(() => []),
     ])
-      .then(([pettyAccounts, categories, dealerList, memberList]) => {
+      .then(([pettyAccounts, categories, dealerList, memberList, bankList]) => {
         if (cancelled) return
         setPettyCashAccounts(pettyAccounts)
         setExpenseCategories(categories)
         setDealers(dealerList)
         setMembers(memberList)
+        setBankAccounts(bankList)
 
         setPcAccountId((prev) => prev || pettyAccounts[0]?.value || '')
         setWCustomerId((prev) => prev || dealerList[0]?.value || '')
+        setWPayoutCashAccountId((prev) => prev || pettyAccounts[0]?.value || '')
+        setWPayoutBankAccountId((prev) => prev || bankList[0]?.value || '')
       })
       .catch((e) => {
         if (!cancelled) showToast('Could not load lookups', e.message, true)
@@ -433,7 +463,10 @@ export default function PettyCashPayment({ leaf, moduleLabel, parentLabel }) {
     !walletOverdrawn &&
     !!wPaidVia.trim() &&
     !!wAuthorisedByUserId &&
-    !!wDate
+    !!wDate &&
+    (wPayoutKind === 'CASH'
+      ? !!wPayoutCashAccountId
+      : !!wPayoutBankAccountId)
 
   const canSubmitWalletSent = !submitting && !!otpCodeInput.trim()
 
@@ -521,10 +554,11 @@ export default function PettyCashPayment({ leaf, moduleLabel, parentLabel }) {
           balanceType: wBalanceType,
           reason: wReason,
           amount: walletRequested,
-          // Wallet withdrawals are accounting-only — no cash/bank payout
-          payoutKind: 'NONE',
-          payoutBankAccountId: '',
-          payoutCashAccountId: '',
+          payoutKind: wPayoutKind,
+          payoutBankAccountId:
+            wPayoutKind === 'BANK' ? wPayoutBankAccountId : '',
+          payoutCashAccountId:
+            wPayoutKind === 'CASH' ? wPayoutCashAccountId : '',
           paidVia: wPaidVia.trim(),
           otpChallengeId,
           authorisedByUserId: wAuthorisedByUserId,
@@ -841,6 +875,40 @@ export default function PettyCashPayment({ leaf, moduleLabel, parentLabel }) {
                 onChange={(v) => setWAuthorisedByUserId(val(v))}
                 disabled={!members.length || otpSent}
               />
+              <Select
+                label="Payout kind *"
+                options={PAYOUT_KINDS}
+                value={wPayoutKind}
+                onChange={(v) => setWPayoutKind(val(v))}
+                disabled={otpSent}
+              />
+              {wPayoutKind === 'CASH' ? (
+                <Select
+                  label="Petty cash account *"
+                  options={pettyCashAccounts}
+                  placeholder={
+                    pettyCashAccounts.length
+                      ? 'Select account…'
+                      : 'No petty cash accounts registered'
+                  }
+                  value={wPayoutCashAccountId}
+                  onChange={(v) => setWPayoutCashAccountId(val(v))}
+                  disabled={!pettyCashAccounts.length || otpSent}
+                />
+              ) : (
+                <Select
+                  label="Bank account *"
+                  options={bankAccounts}
+                  placeholder={
+                    bankAccounts.length
+                      ? 'Select bank account…'
+                      : 'No bank accounts registered'
+                  }
+                  value={wPayoutBankAccountId}
+                  onChange={(v) => setWPayoutBankAccountId(val(v))}
+                  disabled={!bankAccounts.length || otpSent}
+                />
+              )}
             </FieldSet>
           ) : (
             <FieldSet columns={2}>

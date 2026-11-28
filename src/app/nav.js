@@ -122,7 +122,8 @@ export const baseModules = [
       
       { id: 's.compstock', label: 'Comprehensive Stock Report', icon: 'clipboard-list', view: 's.compstock', ref: '5.2.6', description: 'Full showroom stock position and value' },
       { id: 's.transfer', label: 'Showroom-To-Showroom Transfer', icon: 'arrow-left-right', view: 's.transfer', ref: '5.2.7', description: 'Move stock between showrooms' },
-      {
+      { id: 's.pricelist', label: 'Price list (Catalogue)', icon: 'file-text', view: 's.pricelist', ref: '5.7.444', description: 'This is where you set the prices of products you want to sell in a showroom' },
+      { 
         id: 's.returns', label: 'Returns', icon: 'undo-2', ref: '5.2.8',
         children: [
           { id: 's.returns.nondealer', label: 'Non-Dealer', view: 's.returns', params: { dealer: false }, ref: '5.2.8', description: 'Process a walk-in customer return' },
@@ -157,7 +158,7 @@ export const baseModules = [
       { id: 'a.petty.register', label: 'Petty Cash Register', icon: 'plus-circle', view: 'a.petty.register', ref: '5.3.15', description: 'Register petty cash accounts' },
 
       { id: 'a.creditpetty', label: 'Credit Petty Cash', icon: 'plus-circle', view: 'a.creditpetty', ref: '5.3.9', description: 'Top up a petty cash float' },
-      // { id: 'a.posconfirm', label: 'POS/Fund Transfer Confirmation', icon: 'check-check', view: 'a.posconfirm', ref: '5.3.10', description: 'Confirm POS and transfer payments received' },
+      { id: 'a.posconfirm', label: 'POS/Fund Transfer Confirmation', icon: 'check-check', view: 'a.posconfirm', ref: '5.3.10', description: 'Confirm POS and transfer payments received' },
       { id: 'a.fundsawaiting', label: 'Funds Awaiting', icon: 'hourglass', view: 'a.fundsawaiting', ref: '5.3.11', description: 'Funds pending confirmation' },
       {
         id: 'a.petty', label: 'Petty Cash', icon: 'piggy-bank', ref: '5.3.12–5.3.14',
@@ -226,6 +227,7 @@ export const baseModules = [
     section: '5.7',
     items: [
       { id: 'o.customerhistory', label: 'Customer History', icon: 'user-round-search', view: 'o.customerhistory', ref: '5.7.1', description: 'Full transaction history for a customer' },
+      { id: 'f.myreport', label: 'My Report', icon: 'file-text', view: 'f.myreport', ref: '5.7.444', description: 'What it does' },
       {
         id: 'o.custcomp', label: 'Customers/Distributors', icon: 'users-round', ref: '5.7.2–5.7.4',
         children: [

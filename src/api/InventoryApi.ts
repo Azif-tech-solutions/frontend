@@ -15,6 +15,8 @@ import { StockReceiptsReportsCredentials,StockReceiptsReportsResponse } from "./
 import { PriceListPublishCredentials,PriceListPublishResponse } from "./types/InventoryTypes.ts";
 import { PriceListProductHistoryCredentials,PriceListProductHistoryResponse } from "./types/InventoryTypes.ts";
 import { ListStockComprehensiveReportCredentials,ListStockComprehensiveReportResponse } from "./types/InventoryTypes.ts";
+import { ListPriceListFilterResponse,ListPriceListResponse } from "./types/InventoryTypes.ts";
+import { ChangePriceListPriceCredentials,ChangePriceListPriceResponse } from "./types/InventoryTypes.ts";
 /**
  * Lists the page already has, used to turn ids from the API into the labels
  * the register shows. Categories and units are { value, label } option lists
@@ -72,8 +74,8 @@ export default class InventoryApi extends BaseApi {
       landingCost: p.landingCost,
       markupCost: p.markupCost,
       vatCategory: p.vatCategory.id,
-      hsnSectionId: p.hsnSection.id,
-      isicSectionId: p.isicSection.id,
+      hsnSectionId: p.hsnSection?.id ?? "",
+      isicSectionId: p.isicSection?.id ?? "",
 
       // defaults so these products work with the variation flow, same as registerProduct
       details: {},
@@ -102,7 +104,7 @@ export default class InventoryApi extends BaseApi {
     return this.request<ListStokeItemRespsonse>("/stock-items", {
       method: "GET",
       auth: true,
-      query: { locationId, itemType, page, size, q: q || undefined },
+      query: itemType?{ locationId, itemType, page, size, q: q || undefined }:{locationId ,page,size,q: q || undefined},
     });
   }
 
@@ -292,6 +294,34 @@ async listPriceListProductHistory(d: PriceListProductHistoryCredentials) {
     method: "GET",
     auth: true,
     query: d,
+  });
+  return data;
+}
+
+async listPriceListFilter() {
+  const data = await this.request<ListPriceListFilterResponse>("/price-list/filters", {
+    method: "GET",
+    auth: true,
+  });
+  return data;
+}
+
+async listPriceList(d: any) {
+
+  //prices on a date(asAt,default today) with the next  scheduled change ; margins for cost authorized users
+  const data = await this.request<ListPriceListResponse>("/price-list", {
+    method: "GET",
+    auth: true,
+    query: d,
+  });
+  return data;
+}
+
+async editPriceList(priceId:string,d: ChangePriceListPriceCredentials) {
+  const data = await this.request<ChangePriceListPriceResponse>(`/price-list/entries/${priceId}`, {
+    method: "POST",
+    auth: true,
+    body: d,
   });
   return data;
 }

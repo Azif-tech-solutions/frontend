@@ -357,15 +357,121 @@ const STATUS_FILTER_OPTIONS = [
 /* ------------------------------------------------------------------ */
 /*  Printable waybill (shown after one is created)                     */
 /* ------------------------------------------------------------------ */
+// function WaybillView({ crumbs, waybill, onNew, onList }) {
+//   const against = waybill.invoiceNumber || waybill.saleRef
+//   const isDelivery = String(waybill.releaseMethod || '').toUpperCase() === 'DELIVERY'
+//   const lines = (waybill.lines || []).map((l) => ({
+//     product: l.product || l.stockItem?.name || '—',
+//     qty: fmt(l.quantity || 0),
+//     unit: l.unit || '—',
+//     outstanding: fmt(l.stillOutstanding || 0),
+//   }))
+
+//   return (
+//     <Page>
+//       <PageHeader
+//         crumbs={crumbs}
+//         title="Customer waybill"
+//         icon="truck"
+//         description="Official document authorising release and transport of the goods. Hand it to the driver or the collecting customer."
+//         meta={<Badge tone="success">Released against {against}</Badge>}
+//         actions={
+//           <>
+//             <Button variant="ghost" iconLeft="arrow-left" onClick={onList}>
+//               Back to list
+//             </Button>
+//             {onNew && (
+//               <Button variant="secondary" iconLeft="plus" onClick={onNew}>
+//                 New waybill
+//               </Button>
+//             )}
+//             <Button iconLeft="printer" onClick={() => window.print()}>
+//               Print waybill
+//             </Button>
+//           </>
+//         }
+//       />
+//       <div style={{ display: 'flex', justifyContent: 'center' }}>
+//         <DocumentSheet
+//           docType="Customer Waybill"
+//           docNumber={waybill.ref}
+//           issuer={{
+//             name: 'ZifIQ Manufacturing Ltd',
+//             address: waybill.location?.name || '',
+//             contact: waybill.issuedBy?.email || '',
+//             vatId: '',
+//           }}
+//           party={{
+//             name: waybill.customerName,
+//             address: isDelivery ? waybill.deliveryAddress : '',
+//             contact: '',
+//           }}
+//           meta={[
+//             { label: 'Against', value: against, mono: true },
+//             isDelivery
+//               ? { label: 'Driver', value: `${waybill.driverName || '—'}${waybill.vehicleNumber ? ` · ${waybill.vehicleNumber}` : ''}` }
+//               : { label: 'Collected by', value: waybill.collectedBy || '—' },
+//             { label: 'Release date', value: waybill.releaseDate ? fmtDate(waybill.releaseDate) : '—' },
+//           ]}
+//           columns={[
+//             { key: 'product', label: 'Product description' },
+//             { key: 'qty', label: 'Qty released', align: 'right', mono: true },
+//             { key: 'unit', label: 'Unit' },
+//             { key: 'outstanding', label: 'Still outstanding', align: 'right', mono: true },
+//           ]}
+//           lines={lines}
+//           totals={[
+//             { label: 'Lines released', value: String(lines.length) },
+//             {
+//               label: 'Total quantity',
+//               value: fmt((waybill.lines || []).reduce((n, l) => n + (Number(l.quantity) || 0), 0)),
+//               emphasis: true,
+//             },
+//           ]}
+//           stamp={<Badge tone={waybillTone(waybill.status)} uppercase>{pretty(waybill.status) || 'Issued'}</Badge>}
+//           footer="This waybill authorises release of the goods listed against the sale or invoice shown. The receiving party must verify quantities on collection or delivery and sign before the goods leave the premises."
+//         />
+//       </div>
+//     </Page>
+//   )
+// }
 function WaybillView({ crumbs, waybill, onNew, onList }) {
-  const against = waybill.invoiceNumber || waybill.saleRef
-  const isDelivery = String(waybill.releaseMethod || '').toUpperCase() === 'DELIVERY'
+  const [downloading, setDownloading] = useState(false);
+
+  const against = waybill.invoiceNumber || waybill.saleRef;
+  const isDelivery =
+    String(waybill.releaseMethod || "").toUpperCase() === "DELIVERY";
+
   const lines = (waybill.lines || []).map((l) => ({
-    product: l.product || l.stockItem?.name || '—',
+    product: l.product || l.stockItem?.name || "—",
     qty: fmt(l.quantity || 0),
-    unit: l.unit || '—',
+    unit: l.unit || "—",
     outstanding: fmt(l.stillOutstanding || 0),
-  }))
+  }));
+
+  const handleDownload = async () => {
+    try {
+      setDownloading(true);
+
+      const blob = await cashierApi.fetchWaybillReceiptPdf(waybill.id);
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = `${waybill.ref || "waybill"}.pdf`;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to download waybill:", error);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <Page>
@@ -380,62 +486,103 @@ function WaybillView({ crumbs, waybill, onNew, onList }) {
             <Button variant="ghost" iconLeft="arrow-left" onClick={onList}>
               Back to list
             </Button>
+
             {onNew && (
               <Button variant="secondary" iconLeft="plus" onClick={onNew}>
                 New waybill
               </Button>
             )}
+
+            <Button
+              variant="secondary"
+              iconLeft="download"
+              loading={downloading}
+              disabled={downloading}
+              onClick={handleDownload}
+            >
+              Download PDF
+            </Button>
+
             <Button iconLeft="printer" onClick={() => window.print()}>
               Print waybill
             </Button>
           </>
         }
       />
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
+
+      <div style={{ display: "flex", justifyContent: "center" }}>
         <DocumentSheet
           docType="Customer Waybill"
           docNumber={waybill.ref}
           issuer={{
-            name: 'ZifIQ Manufacturing Ltd',
-            address: waybill.location?.name || '',
-            contact: waybill.issuedBy?.email || '',
-            vatId: '',
+            name: "ZifIQ Manufacturing Ltd",
+            address: waybill.location?.name || "",
+            contact: waybill.issuedBy?.email || "",
+            vatId: "",
           }}
           party={{
             name: waybill.customerName,
-            address: isDelivery ? waybill.deliveryAddress : '',
-            contact: '',
+            address: isDelivery ? waybill.deliveryAddress : "",
+            contact: "",
           }}
           meta={[
-            { label: 'Against', value: against, mono: true },
+            { label: "Against", value: against, mono: true },
             isDelivery
-              ? { label: 'Driver', value: `${waybill.driverName || '—'}${waybill.vehicleNumber ? ` · ${waybill.vehicleNumber}` : ''}` }
-              : { label: 'Collected by', value: waybill.collectedBy || '—' },
-            { label: 'Release date', value: waybill.releaseDate ? fmtDate(waybill.releaseDate) : '—' },
+              ? {
+                  label: "Driver",
+                  value: `${waybill.driverName || "—"}${
+                    waybill.vehicleNumber
+                      ? ` · ${waybill.vehicleNumber}`
+                      : ""
+                  }`,
+                }
+              : {
+                  label: "Collected by",
+                  value: waybill.collectedBy || "—",
+                },
+            {
+              label: "Release date",
+              value: waybill.releaseDate
+                ? fmtDate(waybill.releaseDate)
+                : "—",
+            },
           ]}
           columns={[
-            { key: 'product', label: 'Product description' },
-            { key: 'qty', label: 'Qty released', align: 'right', mono: true },
-            { key: 'unit', label: 'Unit' },
-            { key: 'outstanding', label: 'Still outstanding', align: 'right', mono: true },
+            { key: "product", label: "Product description" },
+            { key: "qty", label: "Qty released", align: "right", mono: true },
+            { key: "unit", label: "Unit" },
+            {
+              key: "outstanding",
+              label: "Still outstanding",
+              align: "right",
+              mono: true,
+            },
           ]}
           lines={lines}
           totals={[
-            { label: 'Lines released', value: String(lines.length) },
+            { label: "Lines released", value: String(lines.length) },
             {
-              label: 'Total quantity',
-              value: fmt((waybill.lines || []).reduce((n, l) => n + (Number(l.quantity) || 0), 0)),
+              label: "Total quantity",
+              value: fmt(
+                (waybill.lines || []).reduce(
+                  (n, l) => n + (Number(l.quantity) || 0),
+                  0
+                )
+              ),
               emphasis: true,
             },
           ]}
-          stamp={<Badge tone={waybillTone(waybill.status)} uppercase>{pretty(waybill.status) || 'Issued'}</Badge>}
+          stamp={
+            <Badge tone={waybillTone(waybill.status)} uppercase>
+              {pretty(waybill.status) || "Issued"}
+            </Badge>
+          }
           footer="This waybill authorises release of the goods listed against the sale or invoice shown. The receiving party must verify quantities on collection or delivery and sign before the goods leave the premises."
         />
       </div>
     </Page>
-  )
+  );
 }
-
 /* ------------------------------------------------------------------ */
 /*  Main page                                                          */
 /* ------------------------------------------------------------------ */
@@ -647,7 +794,7 @@ function NewWaybillForm({ crumbs, onBack }) {
           .map((r) => ({
             // The API wants a saleLineId but sale lines don't return one yet,
             // so the line number is used for now. Swap to r._line.id once it exists.
-            saleLineId: String(r._line.lineNo),
+            saleLineId: String(r._line.id),
             quantity: Number(r.releaseNow),
             fromLocationId: sale.location?.id,
           })),

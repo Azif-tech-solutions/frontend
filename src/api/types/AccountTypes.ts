@@ -1509,3 +1509,174 @@ export interface PettyCashAllocationSort {
 
 
 
+
+
+
+export interface AccountReceipt{ 
+    id: string;
+    ref: string;
+    kind: string;
+    receivedAt: string;
+    location: {
+      kind: string;
+      id: string;
+      code: string;
+      name: string;
+    };
+    cashAccount: {
+      kind: string;
+      id: string;
+      code: string;
+      name: string;
+    };
+    cashier: {
+      id: string;
+      name: string;
+      email: string;
+    };
+    customer: {
+      kind: string;
+      id: string;
+      code: string;
+      name: string;
+    };
+    customerName: string;
+    channel: string;
+    amount: number;
+    sourceModule: string;
+    sourceType: string;
+    sourceRef: string;
+    incomeCategory: string;
+    description: string;
+    receivingBankAccount: {
+      kind: string;
+      id: string;
+      code: string;
+      name: string;
+    };
+    terminalRef: string;
+    payerReference: string;
+    confirmationStatus: string;
+    reviewedBy: {
+      id: string;
+      name: string;
+      email: string;
+    };
+    reviewedAt: string;
+    declineNote: string;
+    status: string;
+    voidReason: string;
+  };
+
+
+export interface SingleAccountReceiptResponse{
+    data: AccountReceipt;
+}
+export interface VoidAccountReceiptResponse extends SingleAccountReceiptResponse{
+  }
+
+export interface DeclineAccountReceiptResponse extends SingleAccountReceiptResponse{
+  }
+
+export interface ApprovedAccountReceiptResponse extends SingleAccountReceiptResponse{
+  }
+
+
+
+  export interface ConfirmationStats{
+    
+    data: {
+      pendingCount: number;
+      pendingValue: number;
+      approvedToday: number;
+      declinedToday: number;
+    
+ 
+  }
+  }
+
+export interface ListAccountReceiptResponse {
+  data: Paged<{
+    id: string;
+    ref: string;
+    kind: string;
+    receivedAt: string;
+    location: {
+      id: string;
+      code: string;
+      name: string;
+      type: string;
+    };
+    cashAccount: {
+      id: string;
+      code: string;
+      name: string;
+      kind: string;
+    } | null;
+    cashier: {
+      id: string;
+      name: string;
+      email: string;
+    };
+    customer: {
+      id: string;
+      code: string;
+      name: string;
+      type: string;
+    } | null;
+    customerName: string;
+    channel: string;
+    amount: number;
+    sourceModule: string;
+    sourceType: string;
+    sourceRef: string;
+    incomeCategory: string | null;
+    description: string;
+    receivingBankAccount: {
+      id: string;
+      code: string;
+      bankName: string;
+      accountName: string;
+    } | null;
+    terminalRef: string | null;
+    payerReference: string | null;
+    confirmationStatus: string;
+    reviewedBy: {
+      id: string;
+      name: string;
+      email: string;
+    } | null;
+    reviewedAt: string | null;
+    declineNote: string | null;
+    status: string;
+    voidReason: string | null;
+  }>;
+
+}
+  
+
+export interface ListAccountReceiptFilterResponse {
+  data: {
+    fields: {
+      key: string;
+      label: string;
+      type: string;
+      operators: string[];
+      options: {
+        value: string;
+        label: string;
+      }[];
+      lookup: string | null;
+      facetable: boolean;
+      sortable: boolean;
+      qualifierAliases: string[];
+    }[];
+    collections: unknown[];
+    primaryDate: string | null;
+    defaultSort: {
+      field: string;
+      dir: string;
+    }[];
+    periodPresets: string[];
+  };
+}

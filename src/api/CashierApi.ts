@@ -202,6 +202,7 @@ export default class CashierApi extends BaseApi {
   }
   async getShowroomCatalogue(b:ShowroomCatalogueCredentials) {  
     // get sellable items at the showroom (defaults to the caller's open till's):price for the customer, available stock
+    // b.includeOutOfStock=true
     const data = await this.request<ShowroomCatalogueResponse>("/catalogue", {  
       method: "GET",
       auth: true,
@@ -329,5 +330,13 @@ export default class CashierApi extends BaseApi {
     return data;
   }
 
+ async fetchWaybillPdf(waybillId: string) {
+    // fetch the waybill pdf
+    return this.requestBlob(`/waybills/${waybillId}/pdf`);
+  }
+
+   async fetchWaybillReceiptPdf(id: string) {
+    return this.requestBlob(`api/v1/cashier/waybills/${id}/waybill.pdf`, "application/pdf");
+  }
 
 }
