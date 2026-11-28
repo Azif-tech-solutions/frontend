@@ -621,20 +621,89 @@ export interface PriceListProductHistoryCredentials{
   size: number;
 }
 
+interface PriceList{
+  
+    priceId: string;
+    retailPrice: number;
+    dealerPrice: number;
+    effectiveFrom: string;
+    batchRef: string;
+    note: string;
+    setBy: {
+      id: string; 
+      name: string;
+      email: string;
+    },
+    createdAt: string;
+    state: string; //CURRENT means this is the current price listing for the product
+  }
+
 export interface PriceListProductHistoryResponse{
+  data: Paged<PriceList>;
+}
+
+
+export interface ChangePriceListPriceCredentials{
+  
+  retailPrice: number;
+  dealerPrice: number;
+  note: string;
+}
+
+export interface ChangePriceListPriceResponse{
+  data: PriceList;
+
+}
+
+
+export interface ListPriceListFilterResponse {
+  data: {
+    fields: {
+      key: string;
+      label: string;
+      type: string;
+      operators: string[];
+      options: {
+        value: string;
+        label: string;
+      }[];
+      lookup: string | null;
+      facetable: boolean;
+      sortable: boolean;
+      qualifierAliases: string[];
+    }[];
+    collections: unknown[];
+    primaryDate: string | null;
+    defaultSort: {
+      field: string;
+      dir: string;
+    }[];
+    periodPresets: string[];
+  };
+}
+
+
+export interface ListPriceListResponse {
   data: Paged<{
-     priceId: string;
-        retailPrice: number;
-        dealerPrice: number;
-        effectiveFrom: string;
-        batchRef: string;
-        note: string;
-        setBy: {
-          id: string; 
-          name: string;
-          email: string;
-        },
-        createdAt: string;
-        state: string; //CURRENT means this is the current price listing for the product
+    stockItem: { kind: string; id: string; code: string; name: string };
+    category: { kind: string; id: string; code: string; name: string };
+    unit: string;
+    status: string;
+    priceId: string;
+    retailPrice: number;
+    dealerPrice: number;
+    effectiveFrom: string;
+    batchRef: string;
+    nextChange: {
+      priceId: string;
+      effectiveFrom: string;
+      retailPrice: number;
+      dealerPrice: number;
+    } | null;
+    landingCost: number;
+    margin: number;
+    marginPct: number;
+    dealerMargin: number;
+    belowCost: boolean;
   }>;
 }

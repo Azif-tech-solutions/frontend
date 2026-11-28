@@ -303,13 +303,17 @@ private async send<T = unknown>(
   }
 
   /** Authenticated GET that returns a file (PDF etc.) instead of JSON. Refreshes the token once on a 401. */
-  protected async requestBlob(path: string): Promise<Blob> {
+  protected async requestBlob(path: string, accept?: string): Promise<Blob> {
     const attempt = async () => {
       const { accessToken } = this.getTokens();
       if (!accessToken) throw new ApiError(401, null, "You are not signed in", "NO_TOKEN");
 
       const response = await fetch(this.resolveUrl(path), {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: {
+        Authorization: `Bearer ${accessToken}`,
+        ...(accept ? { Accept: accept } : {}),
+      },
+        // headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!response.ok) {
         throw new ApiError(response.status, null, `Request failed with status ${response.status}`);

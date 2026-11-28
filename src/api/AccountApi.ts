@@ -2,7 +2,7 @@
 
 import { getBaseUrl } from "./config.ts";
 import { BaseApi } from "./config.ts";
-import { FundsDisbursementFiltersResponse } from "./types/AccountTypes.ts";
+import { ApprovedAccountReceiptResponse, ConfirmationStats, DeclineAccountReceiptResponse, FundsDisbursementFiltersResponse, ListAccountReceiptFilterResponse, ListAccountReceiptResponse, SingleAccountReceiptResponse, VoidAccountReceiptResponse } from "./types/AccountTypes.ts";
 import { AccountCashFlowFilterResponse,AccountCashFlowResponse,AccountCashFlowListItem } from "./types/AccountTypes.ts";
 import { FundsDisbursementResponse } from "./types/AccountTypes.ts";
 import { ExpenseCategoryFieldsResponse, CashFlowStatementResponse } from "./types/AccountTypes.ts";
@@ -587,4 +587,74 @@ async getTenderablePayable(params: GetTenderablePayableCreedntials) {
     return data
   }
   
+
+  async voidAccountReceipt(id: string,reason:string) {
+    //Void a wallet/depost funding or other-income receipt(sales and invoice payments are voided in their own modules)
+    const data = await this.request<VoidAccountReceiptResponse>(`/receipts/${id}/void`, {
+      method: "POST",
+      auth: true,
+      body: {reason},
+    });
+    return data
+  }
+
+  async declineAccountReceipt(id: string,reason:string) {
+    //Decline :nothin is posted (a wallet funding is never credited) note required
+    const data = await this.request<DeclineAccountReceiptResponse>(`/receipts/${id}/decline`, {
+      method: "POST",
+      auth: true,
+      body: {note: reason},
+    });
+    return data
+  }
+
+  async approveAccountReceipt(id: string) {
+    //Approve a POS/transfer/cheque receip the bank is credited and a wallet funding completed
+    const data = await this.request<ApprovedAccountReceiptResponse>(`/receipts/${id}/approve`, {
+      method: "POST",
+      auth: true,
+    });
+    return data
+  } 
+
+  async getAccountReceipt(id: string) {
+    const data = await this.request<SingleAccountReceiptResponse>(`/receipts/${id}`, {
+      method: "GET",
+      auth: true,
+    });
+    return data
+  }
+
+  async getConfirmationStats(locationID: string){
+    
+    const data = await this.request<ConfirmationStats>(`/receipts/confirmation-stats`, {
+      method: "GET",
+      auth: true,
+      query: {locationId: locationID},
+    });
+    return data
+  }
+
+  async fetchReceiptPdf(id: string) {
+    return this.requestBlob(`api/v1/account/receipts/${id}/receipt.pdf`, "application/pdf");
+  }
+
+  async listAccountReceipts(params: any) {
+    //receipts(cashiers only see thiers);the confairmation queue is confimationStatus="PENDING"and channel=POS,FUND_TRANSFER,CHEQUE
+    const data = await this.request<ListAccountReceiptResponse>("/receipts", {
+      method: "GET",
+      auth: true,
+      query: params
+    });
+    return data
+  }
+
+
+  async listAccountReceiptFilter(){
+    const data = await this.request<ListAccountReceiptFilterResponse>(`/receipts/filters`, {
+      method: "GET",
+      auth: true,
+    });
+    return data
+  }
 }

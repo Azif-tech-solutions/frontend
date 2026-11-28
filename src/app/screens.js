@@ -10,6 +10,7 @@ import SpecialProductionRuns from './factory/SpecialProductionList'
 // ── 5.1 Factory ──
 import StockRefillFinished from './factory/StockRefillFinished'
 import StockRefillRaw from './factory/StockRefillRaw'
+import CustomerProductHistory from './others/CustomerProductHistory'
 import RefillDrafts from './factory/RefillDrafts'
 import StockRegister from './factory/StockRegister'
 import StockCardGP from './factory/StockCardGP'
@@ -48,7 +49,7 @@ import Returns from './showroom/Returns'
 import GeneralTransferReport from './showroom/GeneralTransferReport'
 import ShowroomVATReport from './showroom/ShowroomVATReport'
 import OutsourceStockRegister from './showroom/OutsourceStockRegister'
-
+import PriceList from './showroom/PriceList'
 // ── 5.3 Account ──
 import AccountCashFlow from './account/AccountCashFlow'
 import BankStatement from './account/BankStatement'
@@ -94,7 +95,8 @@ import AdjustmentsReport from './others/AdjustmentsReport'
 import SCIReport from './others/SCIReport'
 import TransactionReceipts from './others/TransactionReceipts'
 import CashTransferHistory from './others/CashTransferHistory'
-import PriceList from './others/PriceList'
+// import PriceList from './others/PriceList'
+import InvoiceDetails from './others/InvoiceDetails'
 import InstantDiscount from './others/InstantDiscount'
 import CommsReport from './others/CommsReport'
 import CorrespondentsReport from './others/CorrespondentsReport'
@@ -196,11 +198,14 @@ export const screens = {
   's.outsource': OutsourceStock,
   's.compstock': ShowroomStockReport,
   's.showroomreg2': ShowroomRegister,
+  'f.myreport': CustomerProductHistory,
   's.transfer': ShowroomTransfer,
   's.returns': Returns,
   's.transferreport': GeneralTransferReport,
   's.vat': ShowroomVATReport,
+  's.pricelist': PriceList,
   's.register': OutsourceStockRegister,
+
 
   // 5.3 Account (Credit Petty Cash and Fund Petty Cash are the same feature per PRD)
   'a.cashflow': AccountCashFlow,
@@ -288,6 +293,7 @@ export const screens = {
   'ai.eri':DocumentOCR,
   'ai.briefing': ExecutiveBriefing,
 
+
   // Settings
   's.company': CompanySettings,
   factories: Factories,
@@ -295,10 +301,13 @@ export const screens = {
   units: Units,
   categories: Categories,
   manufacturers: Manufacturers,
+  customerproducthistory: CustomerProductHistory,
+
 
   // Pre-PRD screens, kept as visual reference until their PRD equivalents land.
   stockregister: StockRegistration,
   productVariation: ProductVariation,
   stockrecords: StockRecords,
   branches: Branches,
+  invoicedetails: InvoiceDetails,
 }
